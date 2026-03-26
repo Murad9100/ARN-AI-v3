@@ -1,60 +1,47 @@
-import { create } from 'zustand'
-import { supabase } from '../lib/supabase'
-import type { User } from '../types'
+signUp: async (email: string, password: string, fullName: string) => {
+  const { data, error } = await supabase.auth.signUp({ email, password })
+  if (error) throw error
+  if (data.user) {
+    const { error: profileError } = await supabase.from('profiles').insert({
+      id: data.user.id,
+      email,
+      full_name: fullName,
+      plan: 'free',
+      tokens_used: 0,
+      tokens_limit: 50,
+    })
+    if (profileError) throw profileError  // ← bu yox idi
+  }
+},
 
-interface AuthState {
-  user: User | null
-  loading: boolean
-  signIn: (email: string, password: string) => Promise<void>
-  signUp: (email: string, password: string, fullName: string) => Promise<void>
-  signOut: () => Promise<void>
-  fetchProfile: () => Promise<void>
-}
+fetchProfile: async () => {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    set({ user: null, loading: false })
+    return
+  }
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', user.id)
+    .single()
 
-export const useAuthStore = create<AuthState>((set) => ({
-  user: null,
-  loading: true,
-
-  signIn: async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) throw error
-  },
-
-  signUp: async (email: string, password: string, fullName: string) => {
-    const { data, error } = await supabase.auth.signUp({ email, password })
-    if (error) throw error
-    if (data.user) {
-      await supabase.from('profiles').insert({
-        id: data.user.id,
-        email,
-        full_name: fullName,
+  if (profile) {
+    set({ user: profile as User, loading: false })
+  } else {
+    // ← Profile yoxdursa, yarat (fallback)
+    const { data: newProfile } = await supabase
+      .from('profiles')
+      .insert({
+        id: user.id,
+        email: user.email,
+        full_name: user.user_metadata?.full_name ?? '',
         plan: 'free',
         tokens_used: 0,
         tokens_limit: 50,
       })
-    }
-  },
-
-  signOut: async () => {
-    await supabase.auth.signOut()
-    set({ user: null })
-  },
-
-  fetchProfile: async () => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      set({ user: null, loading: false })
-      return
-    }
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
+      .select()
       .single()
-    if (profile) {
-      set({ user: profile as User, loading: false })
-    } else {
-      set({ loading: false })
-    }
-  },
-}))
+    set({ user: newProfile as User ?? null, loading: false })
+  }
+},

@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useAuthStore } from '../store/authStore'
 import { useChatStore } from '../store/chatStore'
 import { sendMessage } from '../services/aiService'
+import { supabase } from '../lib/supabase'
 import type { Message } from '../types'
 
 const SUGGESTIONS = [
@@ -15,22 +16,28 @@ export default function ChatPage() {
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const { user, fetchProfile } = useAuthStore()
-  const { getCurrentChat, addMessage, addChat, currentChatId, setCurrentChat } = useChatStore()
+  const { getCurrentChat, addMessage, addChat, loadChats, currentChatId, setCurrentChat } = useChatStore()
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const currentChat = getCurrentChat()
+
+  // Səhifə açılanda chatları Supabase-dən yüklə
+  useEffect(() => {
+    if (user) {
+      loadChats(user.id)
+    }
+  }, [user])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [currentChat?.messages])
 
   useEffect(() => {
-    if (!currentChatId) {
-      const id = addChat()
-      setCurrentChat(id)
+    if (!currentChatId && user) {
+      addChat(user.id).then((id) => setCurrentChat(id))
     }
-  }, [])
+  }, [user])
 
   // Auto-resize textarea
   useEffect(() => {
@@ -41,16 +48,19 @@ export default function ChatPage() {
   }, [input])
 
   const handleSend = async () => {
-    if (!input.trim() || isLoading) return
+    if (!input.trim() || isLoading || !user) return
 
-    const canSend = user?.plan === 'max' || (user?.tokens_used ?? 0) < (user?.tokens_limit ?? 0)
+    const canSend = user.plan === 'max' || (user.tokens_used ?? 0) < (user.tokens_limit ?? 0)
     if (!canSend) {
       alert('Token limitiniz dolub! Planınızı yüksəldin.')
       return
     }
 
-    const chatId = currentChatId || addChat()
-    if (!currentChatId) setCurrentChat(chatId)
+    let chatId = currentChatId
+    if (!chatId) {
+      chatId = await addChat(user.id)
+      setCurrentChat(chatId)
+    }
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -59,32 +69,43 @@ export default function ChatPage() {
       timestamp: new Date(),
     }
 
-    addMessage(chatId, userMessage)
+    await addMessage(chatId, userMessage)
     setInput('')
     setIsLoading(true)
 
+    const assistantMessageId = (Date.now() + 1).toString()
     const assistantMessage: Message = {
-      id: (Date.now() + 1).toString(),
+      id: assistantMessageId,
       role: 'assistant',
       content: '',
       timestamp: new Date(),
     }
-    addMessage(chatId, assistantMessage)
+
+    // Store-a boş mesaj əlavə et (streaming üçün), DB-yə hələ yazma
+    useChatStore.setState((state) => ({
+      chats: state.chats.map((c) => {
+        if (c.id !== chatId) return c
+        return { ...c, messages: [...c.messages, assistantMessage] }
+      }),
+    }))
 
     const chat = getCurrentChat()
     const history = (chat?.messages || [])
-      .filter((m) => m.id !== assistantMessage.id)
+      .filter((m) => m.id !== assistantMessageId)
       .map((m) => ({ role: m.role, content: m.content }))
+
+    let finalContent = ''
 
     try {
       await sendMessage(history, (chunk) => {
+        finalContent += chunk
         const { chats } = useChatStore.getState()
         const updated = chats.map((c) => {
           if (c.id !== chatId) return c
           return {
             ...c,
             messages: c.messages.map((m) =>
-              m.id === assistantMessage.id
+              m.id === assistantMessageId
                 ? { ...m, content: m.content + chunk }
                 : m
             ),
@@ -92,21 +113,41 @@ export default function ChatPage() {
         })
         useChatStore.setState({ chats: updated })
       })
+
+      // Streaming bitdi — final cavabı Supabase-ə saxla
+      await supabase.from('messages').insert({
+        id: assistantMessageId,
+        chat_id: chatId,
+        role: 'assistant',
+        content: finalContent,
+        timestamp: assistantMessage.timestamp.toISOString(),
+      })
+
       await fetchProfile()
     } catch {
+      const errorText = 'Xəta baş verdi. Yenidən cəhd edin.'
+      finalContent = errorText
+
       const { chats } = useChatStore.getState()
       const updated = chats.map((c) => {
         if (c.id !== chatId) return c
         return {
           ...c,
           messages: c.messages.map((m) =>
-            m.id === assistantMessage.id
-              ? { ...m, content: 'Xəta baş verdi. Yenidən cəhd edin.' }
-              : m
+            m.id === assistantMessageId ? { ...m, content: errorText } : m
           ),
         }
       })
       useChatStore.setState({ chats: updated })
+
+      // Xəta mesajını da DB-yə yaz
+      await supabase.from('messages').insert({
+        id: assistantMessageId,
+        chat_id: chatId,
+        role: 'assistant',
+        content: errorText,
+        timestamp: assistantMessage.timestamp.toISOString(),
+      })
     } finally {
       setIsLoading(false)
     }
@@ -130,7 +171,6 @@ export default function ChatPage() {
         {/* Empty state */}
         {!currentChat?.messages.length && (
           <div className="flex flex-col items-center justify-center h-full text-center gap-3 fade-in">
-            {/* Logo */}
             <div
               className="w-16 h-16 rounded-2xl flex items-center justify-center text-2xl mb-1 animate-float"
               style={{
@@ -154,7 +194,6 @@ export default function ChatPage() {
               Penetration testing, etik hacking və kibertəhlükəsizlik haqqında suallarınızı soruşun.
             </p>
 
-            {/* Suggestion chips */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-4 w-full max-w-lg">
               {SUGGESTIONS.map((q) => (
                 <button
@@ -193,7 +232,6 @@ export default function ChatPage() {
             key={message.id}
             className={`flex gap-3 fade-in ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
           >
-            {/* Assistant avatar */}
             {message.role === 'assistant' && (
               <div
                 className="w-8 h-8 rounded-xl flex items-center justify-center text-sm flex-shrink-0 mt-0.5"
@@ -208,7 +246,6 @@ export default function ChatPage() {
               </div>
             )}
 
-            {/* Bubble */}
             <div
               className={`max-w-[75%] rounded-2xl px-4 py-3 text-sm leading-relaxed markdown-content ${
                 message.role === 'assistant' && !message.content ? 'typing-cursor' : ''
@@ -232,7 +269,6 @@ export default function ChatPage() {
               {message.content || (isLoading ? '' : 'Cavab yüklənir...')}
             </div>
 
-            {/* User avatar */}
             {message.role === 'user' && (
               <div
                 className="w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5"
@@ -259,7 +295,6 @@ export default function ChatPage() {
           background: 'var(--bg-secondary)',
         }}
       >
-        {/* Token bar */}
         {user?.plan === 'free' && (
           <div className="flex items-center justify-between mb-3 px-1">
             <span
@@ -286,7 +321,6 @@ export default function ChatPage() {
           </div>
         )}
 
-        {/* Textarea + send */}
         <div
           className="flex gap-2 items-end rounded-2xl px-3 py-2"
           style={{

@@ -1,24 +1,47 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import { useChatStore } from '../store/chatStore'
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const { user, signOut } = useAuthStore()
   const { chats, currentChatId, addChat, setCurrentChat, deleteChat } = useChatStore()
   const navigate = useNavigate()
   const location = useLocation()
 
-  const handleNewChat = () => {
-    const id = addChat()
-    navigate('/chat')
-    setCurrentChat(id)
+  // Mobilde başlanğıcda sidebar bağlı olsun
+  useEffect(() => {
+    const isMobile = window.innerWidth < 768
+    setSidebarOpen(!isMobile)
+  }, [])
+
+  // Mobilde route dəyişəndə sidebar bağlansın
+  useEffect(() => {
+    const isMobile = window.innerWidth < 768
+    if (isMobile) setSidebarOpen(false)
+  }, [location.pathname])
+
+  const handleNewChat = async () => {
+    if (user) {
+      const id = await addChat(user.id)
+      navigate('/chat')
+      setCurrentChat(id)
+    }
+    const isMobile = window.innerWidth < 768
+    if (isMobile) setSidebarOpen(false)
   }
 
   const handleSignOut = async () => {
     await signOut()
     navigate('/')
+  }
+
+  const handleChatSelect = (id: string) => {
+    setCurrentChat(id)
+    navigate('/chat')
+    const isMobile = window.innerWidth < 768
+    if (isMobile) setSidebarOpen(false)
   }
 
   const tokenPct = user ? Math.min((user.tokens_used / user.tokens_limit) * 100, 100) : 0
@@ -37,9 +60,19 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       className="flex h-screen overflow-hidden"
       style={{ background: 'var(--bg-primary)', fontFamily: "'JetBrains Mono', monospace" }}
     >
-      {/* ── Sidebar ─────────────────────────────────────── */}
+      {/* ── Mobil overlay (sidebar açıqsa qaraldır) ─── */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-20 md:hidden"
+          style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(2px)' }}
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* ── Sidebar ─────────────────────────────────── */}
       <div
-        className="flex flex-col overflow-hidden transition-all duration-300 flex-shrink-0"
+        className="flex flex-col flex-shrink-0 transition-all duration-300 overflow-hidden
+                   fixed md:relative z-30 h-full"
         style={{
           width: sidebarOpen ? '256px' : '0px',
           background: 'var(--bg-secondary)',
@@ -48,7 +81,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       >
         {/* Logo */}
         <div
-          className="flex items-center gap-3 px-4 py-5"
+          className="flex items-center gap-3 px-4 py-5 flex-shrink-0"
           style={{ borderBottom: '1px solid rgba(99,102,241,0.12)' }}
         >
           <div
@@ -76,7 +109,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* New Chat */}
-        <div className="px-3 pt-4 pb-2">
+        <div className="px-3 pt-4 pb-2 flex-shrink-0">
           <button
             onClick={handleNewChat}
             className="w-full py-2.5 px-4 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-2"
@@ -102,7 +135,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
         {/* Section label */}
         <p
-          className="px-4 pt-3 pb-1 text-xs uppercase tracking-widest"
+          className="px-4 pt-3 pb-1 text-xs uppercase tracking-widest flex-shrink-0"
           style={{ color: 'var(--text-secondary)', opacity: 0.4 }}
         >
           // tarixçə
@@ -123,7 +156,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             return (
               <div
                 key={chat.id}
-                onClick={() => { setCurrentChat(chat.id); navigate('/chat') }}
+                onClick={() => handleChatSelect(chat.id)}
                 className="group flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer text-xs transition-all"
                 style={{
                   background: isActive ? 'rgba(99,102,241,0.14)' : 'transparent',
@@ -149,7 +182,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 </span>
                 <button
                   onClick={(e) => { e.stopPropagation(); deleteChat(chat.id) }}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity ml-2 text-xs"
+                  className="opacity-0 group-hover:opacity-100 transition-opacity ml-2 text-xs flex-shrink-0"
                   style={{ color: 'rgba(239,68,68,0.7)' }}
                   onMouseEnter={(e) => (e.currentTarget.style.color = '#ef4444')}
                   onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(239,68,68,0.7)')}
@@ -163,10 +196,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
         {/* User Info */}
         <div
-          className="p-3"
+          className="p-3 flex-shrink-0"
           style={{ borderTop: '1px solid rgba(99,102,241,0.12)' }}
         >
-          {/* Token bar (free plan) */}
           {user?.plan === 'free' && (
             <div className="mb-3 px-1">
               <div className="flex items-center justify-between mb-1.5">
@@ -195,7 +227,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </div>
           )}
 
-          {/* User card */}
           <div
             className="flex items-center gap-2.5 p-2.5 rounded-xl mb-2"
             style={{
@@ -217,19 +248,15 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               <p className="text-xs font-medium truncate" style={{ color: 'var(--text-primary)' }}>
                 {user?.full_name}
               </p>
-              <p
-                className="text-xs capitalize"
-                style={{ color: 'var(--accent-primary)', opacity: 0.8 }}
-              >
+              <p className="text-xs capitalize" style={{ color: 'var(--accent-primary)', opacity: 0.8 }}>
                 {user?.plan === 'max' ? '∞ max plan' : `${user?.plan} plan`}
               </p>
             </div>
           </div>
 
-          {/* Action buttons */}
           <div className="flex gap-1.5">
             <button
-              onClick={() => navigate('/settings')}
+              onClick={() => { navigate('/settings'); const isMobile = window.innerWidth < 768; if (isMobile) setSidebarOpen(false) }}
               className="flex-1 py-1.5 text-xs rounded-xl transition-all"
               style={{
                 background: 'rgba(255,255,255,0.04)',
@@ -274,8 +301,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </div>
       </div>
 
-      {/* ── Main Content ─────────────────────────────────── */}
-      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+      {/* ── Main Content ─────────────────────────────── */}
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0 w-full">
         {/* Header */}
         <div
           className="flex items-center gap-3 px-4 h-14 flex-shrink-0"
@@ -287,29 +314,20 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           {/* Hamburger */}
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="flex flex-col gap-1 p-1.5 rounded-lg transition-all"
+            className="flex flex-col gap-1 p-1.5 rounded-lg transition-all flex-shrink-0"
             style={{ color: 'var(--text-secondary)' }}
             onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--accent-primary)')}
             onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-secondary)')}
           >
-            <span
-              className="block w-4 h-px transition-all"
-              style={{ background: 'currentColor' }}
-            />
-            <span
-              className="block w-3 h-px transition-all"
-              style={{ background: 'currentColor' }}
-            />
-            <span
-              className="block w-4 h-px transition-all"
-              style={{ background: 'currentColor' }}
-            />
+            <span className="block w-4 h-px" style={{ background: 'currentColor' }} />
+            <span className="block w-3 h-px" style={{ background: 'currentColor' }} />
+            <span className="block w-4 h-px" style={{ background: 'currentColor' }} />
           </button>
 
-          {/* Active indicator + page label */}
+          {/* Page label */}
           <div className="flex items-center gap-2">
             <span
-              className="w-1.5 h-1.5 rounded-full"
+              className="w-1.5 h-1.5 rounded-full flex-shrink-0"
               style={{
                 background: 'var(--accent-primary)',
                 boxShadow: '0 0 6px var(--accent-primary)',
@@ -324,11 +342,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </div>
 
           {/* Right side */}
-          <div className="ml-auto flex items-center gap-3">
+          <div className="ml-auto flex items-center gap-2">
             {user?.plan === 'free' && (
               <button
                 onClick={() => navigate('/pricing')}
-                className="text-xs px-3 py-1.5 rounded-lg transition-all font-semibold"
+                className="text-xs px-3 py-1.5 rounded-lg transition-all font-semibold whitespace-nowrap"
                 style={{
                   background: 'linear-gradient(135deg, rgba(99,102,241,0.18), rgba(139,92,246,0.12))',
                   border: '1px solid rgba(99,102,241,0.3)',
@@ -350,7 +368,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             )}
             {user?.plan !== 'free' && (
               <span
-                className="text-xs px-2.5 py-1 rounded-lg"
+                className="text-xs px-2.5 py-1 rounded-lg whitespace-nowrap"
                 style={{
                   background: 'rgba(99,102,241,0.1)',
                   border: '1px solid rgba(99,102,241,0.2)',
@@ -361,7 +379,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               </span>
             )}
             <span
-              className="text-xs"
+              className="text-xs hidden sm:inline"
               style={{ color: 'var(--text-secondary)', opacity: 0.5 }}
             >
               {user?.plan === 'max' ? '∞' : `${user?.tokens_used}/${user?.tokens_limit}`}

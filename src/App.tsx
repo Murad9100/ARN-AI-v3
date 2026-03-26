@@ -22,7 +22,7 @@ export default function App() {
       <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center">
         <div className="text-center">
           <div className="text-4xl mb-4">⚡</div>
-          <div className="text-[#00ff88] text-xl animate-pulse">ARN AI yüklənir...</div>
+          <div className="text-indigo-400 text-xl animate-pulse">ARN AI yüklənir...</div>
         </div>
       </div>
     )
@@ -31,6 +31,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
+        <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={user ? <Navigate to="/chat" /> : <LoginPage />} />
         <Route path="/register" element={user ? <Navigate to="/chat" /> : <RegisterPage />} />
         <Route path="/pricing" element={<PricingPage />} />
@@ -50,7 +51,7 @@ export default function App() {
             </ProtectedRoute>
           }
         />
-        <Route path="*" element={<Navigate to={user ? "/chat" : "/login"} />} />
+        <Route path="*" element={<Navigate to={user ? "/chat" : "/"} />} />
       </Routes>
     </BrowserRouter>
   )

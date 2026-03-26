@@ -21,8 +21,6 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   signUp: async (email: string, password: string, fullName: string) => {
-    // Profil məlumatlarını metadata olaraq göndəririk.
-    // Bu, istifadəçi e-poçtu təsdiqləyib daxil olanda profilin yaradılmasını təmin edəcək.
     const { error } = await supabase.auth.signUp({ 
       email, 
       password,
@@ -34,7 +32,6 @@ export const useAuthStore = create<AuthState>((set) => ({
     })
 
     if (error) throw error
-    // Profil insert hissəsini burdan sildik, çünki fetchProfile bunu idarə edir.
   },
 
   signOut: async () => {
@@ -50,8 +47,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       return
     }
 
-    // Əvvəlcə mövcud profili yoxlayırıq
-    const { data: profile, error: fetchError } = await supabase
+    const { data: profile } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', user.id)
@@ -60,7 +56,6 @@ export const useAuthStore = create<AuthState>((set) => ({
     if (profile) {
       set({ user: profile as User, loading: false })
     } else {
-      // Əgər profil yoxdursa (yeni qeydiyyatdan keçib ilk dəfə daxil olubsa), yaradırıq
       const { data: newProfile, error: insertError } = await supabase
         .from('profiles')
         .insert({

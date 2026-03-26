@@ -21,19 +21,20 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   signUp: async (email: string, password: string, fullName: string) => {
-    const { data, error } = await supabase.auth.signUp({ email, password })
+    // Profil məlumatlarını metadata olaraq göndəririk.
+    // Bu, istifadəçi e-poçtu təsdiqləyib daxil olanda profilin yaradılmasını təmin edəcək.
+    const { error } = await supabase.auth.signUp({ 
+      email, 
+      password,
+      options: {
+        data: {
+          full_name: fullName
+        }
+      }
+    })
+
     if (error) throw error
-    if (data.user) {
-      const { error: profileError } = await supabase.from('profiles').insert({
-        id: data.user.id,
-        email,
-        full_name: fullName,
-        plan: 'free',
-        tokens_used: 0,
-        tokens_limit: 50,
-      })
-      if (profileError) throw profileError
-    }
+    // Profil insert hissəsini burdan sildik, çünki fetchProfile bunu idarə edir.
   },
 
   signOut: async () => {
@@ -43,12 +44,14 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   fetchProfile: async () => {
     const { data: { user } } = await supabase.auth.getUser()
+    
     if (!user) {
       set({ user: null, loading: false })
       return
     }
 
-    const { data: profile } = await supabase
+    // Əvvəlcə mövcud profili yoxlayırıq
+    const { data: profile, error: fetchError } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', user.id)
@@ -57,7 +60,8 @@ export const useAuthStore = create<AuthState>((set) => ({
     if (profile) {
       set({ user: profile as User, loading: false })
     } else {
-      const { data: newProfile } = await supabase
+      // Əgər profil yoxdursa (yeni qeydiyyatdan keçib ilk dəfə daxil olubsa), yaradırıq
+      const { data: newProfile, error: insertError } = await supabase
         .from('profiles')
         .insert({
           id: user.id,
@@ -69,7 +73,12 @@ export const useAuthStore = create<AuthState>((set) => ({
         })
         .select()
         .single()
-      set({ user: (newProfile as User) ?? null, loading: false })
+
+      if (!insertError && newProfile) {
+        set({ user: (newProfile as User), loading: false })
+      } else {
+        set({ user: null, loading: false })
+      }
     }
   },
 }))

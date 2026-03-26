@@ -4,6 +4,13 @@ import { useChatStore } from '../store/chatStore'
 import { sendMessage } from '../services/aiService'
 import type { Message } from '../types'
 
+const SUGGESTIONS = [
+  'Nmap ilə port scan necə aparılır?',
+  'SQL injection nədir?',
+  'Burp Suite ilə web test',
+  'XSS hücumu nədir?',
+]
+
 export default function ChatPage() {
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -24,6 +31,14 @@ export default function ChatPage() {
       setCurrentChat(id)
     }
   }, [])
+
+  // Auto-resize textarea
+  useEffect(() => {
+    const ta = textareaRef.current
+    if (!ta) return
+    ta.style.height = 'auto'
+    ta.style.height = Math.min(ta.scrollHeight, 128) + 'px'
+  }, [input])
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return
@@ -104,29 +119,67 @@ export default function ChatPage() {
     }
   }
 
+  const tokenPct = user ? Math.min((user.tokens_used / user.tokens_limit) * 100, 100) : 0
+
   return (
-    <div className="flex flex-col h-full">
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+    <div className="flex flex-col h-full" style={{ background: 'var(--bg-primary)' }}>
+
+      {/* ── Messages area ───────────────────────────────── */}
+      <div className="flex-1 overflow-y-auto px-4 py-6 space-y-5">
+
+        {/* Empty state */}
         {!currentChat?.messages.length && (
-          <div className="flex flex-col items-center justify-center h-full text-center">
-            <div className="text-6xl mb-4">⚡</div>
-            <h2 className="text-2xl font-bold text-[#00ff88] mb-2">ARN AI</h2>
-            <p className="text-gray-400 max-w-md">
-              Kibertəhlükəsizlik, penetration testing, etik hacking haqqında suallarınızı soruşun.
+          <div className="flex flex-col items-center justify-center h-full text-center gap-3 fade-in">
+            {/* Logo */}
+            <div
+              className="w-16 h-16 rounded-2xl flex items-center justify-center text-2xl mb-1 animate-float"
+              style={{
+                background: 'rgba(99,102,241,0.12)',
+                border: '1px solid rgba(99,102,241,0.3)',
+                boxShadow: '0 0 30px rgba(99,102,241,0.15)',
+              }}
+            >
+              ⚡
+            </div>
+            <h2
+              className="text-3xl font-black gradient-text"
+              style={{ fontFamily: "'JetBrains Mono', monospace" }}
+            >
+              ARN AI
+            </h2>
+            <p className="font-mono text-xs mb-2" style={{ color: 'var(--text-secondary)' }}>
+              // kibertəhlükəsizlik_assistantı
             </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-6 max-w-lg w-full">
-              {[
-                'Nmap ilə port scan necə aparılır?',
-                'SQL injection nədir?',
-                'Burp Suite ilə web test',
-                'XSS hücumu nədir?',
-              ].map((q) => (
+            <p className="text-sm max-w-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+              Penetration testing, etik hacking və kibertəhlükəsizlik haqqında suallarınızı soruşun.
+            </p>
+
+            {/* Suggestion chips */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-4 w-full max-w-lg">
+              {SUGGESTIONS.map((q) => (
                 <button
                   key={q}
                   onClick={() => setInput(q)}
-                  className="p-3 text-sm text-left bg-white/5 hover:bg-[#00ff88]/10 border border-white/10 hover:border-[#00ff88]/30 rounded-lg text-gray-400 hover:text-[#00ff88] transition-all"
+                  className="p-3 text-xs text-left rounded-xl transition-all font-mono"
+                  style={{
+                    background: 'rgba(255,255,255,0.04)',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    color: 'var(--text-secondary)',
+                  }}
+                  onMouseEnter={(e) => {
+                    const el = e.currentTarget
+                    el.style.background = 'rgba(99,102,241,0.1)'
+                    el.style.borderColor = 'rgba(99,102,241,0.35)'
+                    el.style.color = '#a5b4fc'
+                  }}
+                  onMouseLeave={(e) => {
+                    const el = e.currentTarget
+                    el.style.background = 'rgba(255,255,255,0.04)'
+                    el.style.borderColor = 'rgba(255,255,255,0.08)'
+                    el.style.color = 'var(--text-secondary)'
+                  }}
                 >
+                  <span style={{ color: 'var(--accent-primary)', marginRight: '0.35rem' }}>&gt;</span>
                   {q}
                 </button>
               ))}
@@ -134,64 +187,154 @@ export default function ChatPage() {
           </div>
         )}
 
+        {/* Messages */}
         {currentChat?.messages.map((message) => (
           <div
             key={message.id}
             className={`flex gap-3 fade-in ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
           >
+            {/* Assistant avatar */}
             {message.role === 'assistant' && (
-              <div className="w-8 h-8 rounded-full bg-[#00ff88]/20 flex items-center justify-center text-[#00ff88] text-sm flex-shrink-0">
+              <div
+                className="w-8 h-8 rounded-xl flex items-center justify-center text-sm flex-shrink-0 mt-0.5"
+                style={{
+                  background: 'rgba(99,102,241,0.15)',
+                  border: '1px solid rgba(99,102,241,0.3)',
+                  color: 'var(--accent-primary)',
+                  boxShadow: '0 0 12px rgba(99,102,241,0.15)',
+                }}
+              >
                 ⚡
               </div>
             )}
+
+            {/* Bubble */}
             <div
-              className={`max-w-[75%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+              className={`max-w-[75%] rounded-2xl px-4 py-3 text-sm leading-relaxed markdown-content ${
+                message.role === 'assistant' && !message.content ? 'typing-cursor' : ''
+              }`}
+              style={
                 message.role === 'user'
-                  ? 'bg-[#00ff88]/20 text-white border border-[#00ff88]/30'
-                  : 'bg-white/5 text-gray-200 border border-white/10'
-              } ${message.role === 'assistant' && !message.content ? 'typing-cursor' : ''}`}
+                  ? {
+                      background: 'linear-gradient(135deg, rgba(99,102,241,0.2), rgba(139,92,246,0.15))',
+                      border: '1px solid rgba(99,102,241,0.3)',
+                      color: 'var(--text-primary)',
+                      borderBottomRightRadius: '4px',
+                    }
+                  : {
+                      background: 'var(--bg-secondary)',
+                      border: '1px solid var(--border-color)',
+                      color: '#cbd5e1',
+                      borderBottomLeftRadius: '4px',
+                    }
+              }
             >
               {message.content || (isLoading ? '' : 'Cavab yüklənir...')}
             </div>
+
+            {/* User avatar */}
             {message.role === 'user' && (
-              <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white text-sm flex-shrink-0">
+              <div
+                className="w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5"
+                style={{
+                  background: 'linear-gradient(135deg, #6366f1, #9333ea)',
+                  color: 'white',
+                  boxShadow: '0 0 12px rgba(99,102,241,0.3)',
+                }}
+              >
                 {user?.full_name?.charAt(0).toUpperCase() || 'U'}
               </div>
             )}
           </div>
         ))}
+
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input */}
-      <div className="p-4 border-t border-[#00ff88]/20 bg-[#0d1117]">
+      {/* ── Input area ──────────────────────────────────── */}
+      <div
+        className="px-4 pt-3 pb-4"
+        style={{
+          borderTop: '1px solid rgba(99,102,241,0.15)',
+          background: 'var(--bg-secondary)',
+        }}
+      >
+        {/* Token bar */}
         {user?.plan === 'free' && (
-          <div className="mb-2 flex items-center justify-between text-xs text-gray-500">
-            <span>Token: {user.tokens_used}/{user.tokens_limit}</span>
-            <div className="w-32 h-1 bg-white/10 rounded-full overflow-hidden">
+          <div className="flex items-center justify-between mb-3 px-1">
+            <span
+              className="font-mono text-xs flex items-center gap-1.5"
+              style={{ color: 'var(--text-secondary)' }}
+            >
+              <span style={{ color: 'var(--accent-primary)' }}>//</span>
+              token: {user.tokens_used}/{user.tokens_limit}
+            </span>
+            <div
+              className="w-28 h-1 rounded-full overflow-hidden"
+              style={{ background: 'rgba(255,255,255,0.08)' }}
+            >
               <div
-                className="h-full bg-[#00ff88] rounded-full transition-all"
-                style={{ width: `${Math.min((user.tokens_used / user.tokens_limit) * 100, 100)}%` }}
+                className="h-full rounded-full transition-all"
+                style={{
+                  width: `${tokenPct}%`,
+                  background: tokenPct > 80
+                    ? 'linear-gradient(90deg, #f59e0b, #ef4444)'
+                    : 'linear-gradient(90deg, var(--accent-primary), var(--accent-secondary))',
+                }}
               />
             </div>
           </div>
         )}
-        <div className="flex gap-3 items-end">
+
+        {/* Textarea + send */}
+        <div
+          className="flex gap-2 items-end rounded-2xl px-3 py-2"
+          style={{
+            background: 'rgba(255,255,255,0.04)',
+            border: '1px solid rgba(99,102,241,0.2)',
+            transition: 'border-color 0.25s',
+          }}
+          onFocusCapture={(e) => (e.currentTarget.style.borderColor = 'rgba(99,102,241,0.5)')}
+          onBlurCapture={(e) => (e.currentTarget.style.borderColor = 'rgba(99,102,241,0.2)')}
+        >
           <textarea
             ref={textareaRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Sualınızı yazın... (Enter - göndər, Shift+Enter - yeni sətir)"
-            className="flex-1 bg-white/5 border border-white/10 focus:border-[#00ff88]/50 rounded-xl px-4 py-3 text-white text-sm resize-none focus:outline-none transition-colors min-h-[48px] max-h-32"
+            placeholder="// sualınızı yazın...  (Enter göndər · Shift+Enter yeni sətir)"
+            className="flex-1 bg-transparent text-sm resize-none focus:outline-none py-1"
+            style={{
+              color: 'var(--text-primary)',
+              fontFamily: "'JetBrains Mono', monospace",
+              minHeight: '24px',
+              maxHeight: '128px',
+            }}
             rows={1}
           />
           <button
             onClick={handleSend}
             disabled={isLoading || !input.trim()}
-            className="px-4 py-3 bg-[#00ff88] text-black font-bold rounded-xl hover:bg-[#00ff88]/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center transition-all"
+            style={{
+              background: isLoading || !input.trim()
+                ? 'rgba(99,102,241,0.15)'
+                : 'linear-gradient(135deg, #6366f1, #9333ea)',
+              color: isLoading || !input.trim() ? 'rgba(99,102,241,0.4)' : 'white',
+              boxShadow: isLoading || !input.trim() ? 'none' : '0 4px 15px rgba(99,102,241,0.35)',
+              cursor: isLoading || !input.trim() ? 'not-allowed' : 'pointer',
+            }}
           >
-            {isLoading ? '...' : '➤'}
+            {isLoading ? (
+              <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+            ) : (
+              <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+            )}
           </button>
         </div>
       </div>

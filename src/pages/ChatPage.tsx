@@ -1,4 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
+import ReactMarkdown from 'react-markdown'
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
+import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import { useAuthStore } from '../store/authStore'
 import { useChatStore } from '../store/chatStore'
 import { sendMessage } from '../services/aiService'
@@ -12,6 +15,121 @@ const SUGGESTIONS = [
   'XSS hücumu nədir?',
 ]
 
+// Kod bloku komponenti
+const CodeBlock = ({ language, value }: { language: string; value: string }) => {
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(value)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <div className="rounded-xl overflow-hidden my-3" style={{ border: '1px solid rgba(99,102,241,0.25)' }}>
+      {/* Kod başlığı */}
+      <div
+        className="flex items-center justify-between px-4 py-2"
+        style={{ background: 'rgba(99,102,241,0.1)', borderBottom: '1px solid rgba(99,102,241,0.2)' }}
+      >
+        <span className="text-xs font-mono" style={{ color: 'var(--accent-primary)' }}>
+          {language || 'code'}
+        </span>
+        <button
+          onClick={handleCopy}
+          className="text-xs px-2 py-1 rounded-lg transition-all font-mono"
+          style={{
+            background: copied ? 'rgba(34,197,94,0.15)' : 'rgba(99,102,241,0.15)',
+            color: copied ? '#4ade80' : 'var(--accent-primary)',
+            border: `1px solid ${copied ? 'rgba(34,197,94,0.3)' : 'rgba(99,102,241,0.3)'}`,
+          }}
+        >
+          {copied ? '✓ kopyalandı' : 'kopyala'}
+        </button>
+      </div>
+      <SyntaxHighlighter
+        language={language || 'bash'}
+        style={oneDark}
+        customStyle={{
+          margin: 0,
+          padding: '1rem',
+          background: 'rgba(0,0,0,0.4)',
+          fontSize: '0.8rem',
+          lineHeight: '1.6',
+        }}
+      >
+        {value}
+      </SyntaxHighlighter>
+    </div>
+  )
+}
+
+// Markdown renderer
+const MarkdownMessage = ({ content }: { content: string }) => (
+  <ReactMarkdown
+    components={{
+      code({ className, children, ...props }) {
+        const match = /language-(\w+)/.exec(className || '')
+        const isBlock = !!match
+        return isBlock ? (
+          <CodeBlock language={match[1]} value={String(children).replace(/\n$/, '')} />
+        ) : (
+          <code
+            className="px-1.5 py-0.5 rounded text-xs font-mono"
+            style={{ background: 'rgba(99,102,241,0.15)', color: '#a5b4fc' }}
+            {...props}
+          >
+            {children}
+          </code>
+        )
+      },
+      h1: ({ children }) => (
+        <h1 className="text-xl font-bold mb-3 mt-4" style={{ color: 'var(--text-primary)' }}>{children}</h1>
+      ),
+      h2: ({ children }) => (
+        <h2 className="text-lg font-bold mb-2 mt-3" style={{ color: 'var(--text-primary)' }}>{children}</h2>
+      ),
+      h3: ({ children }) => (
+        <h3 className="text-base font-semibold mb-2 mt-3" style={{ color: '#a5b4fc' }}>{children}</h3>
+      ),
+      p: ({ children }) => (
+        <p className="mb-2 leading-relaxed" style={{ color: '#cbd5e1' }}>{children}</p>
+      ),
+      ul: ({ children }) => (
+        <ul className="mb-3 space-y-1" style={{ paddingLeft: '1.25rem' }}>{children}</ul>
+      ),
+      ol: ({ children }) => (
+        <ol className="mb-3 space-y-1" style={{ paddingLeft: '1.25rem', listStyleType: 'decimal' }}>{children}</ol>
+      ),
+      li: ({ children }) => (
+        <li className="text-sm leading-relaxed" style={{ color: '#cbd5e1', listStyleType: 'disc' }}>{children}</li>
+      ),
+      strong: ({ children }) => (
+        <strong className="font-semibold" style={{ color: '#a5b4fc' }}>{children}</strong>
+      ),
+      blockquote: ({ children }) => (
+        <blockquote
+          className="pl-3 my-2 text-sm italic"
+          style={{
+            borderLeft: '3px solid var(--accent-primary)',
+            color: 'var(--text-secondary)',
+            background: 'rgba(99,102,241,0.05)',
+            padding: '0.5rem 0.75rem',
+            borderRadius: '0 0.5rem 0.5rem 0',
+          }}
+        >
+          {children}
+        </blockquote>
+      ),
+      hr: () => (
+        <hr className="my-3" style={{ borderColor: 'rgba(99,102,241,0.2)' }} />
+      ),
+    }}
+  >
+    {content}
+  </ReactMarkdown>
+)
+
 export default function ChatPage() {
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -22,11 +140,8 @@ export default function ChatPage() {
 
   const currentChat = getCurrentChat()
 
-  // Səhifə açılanda chatları Supabase-dən yüklə
   useEffect(() => {
-    if (user) {
-      loadChats(user.id)
-    }
+    if (user) loadChats(user.id)
   }, [user])
 
   useEffect(() => {
@@ -39,7 +154,6 @@ export default function ChatPage() {
     }
   }, [user])
 
-  // Auto-resize textarea
   useEffect(() => {
     const ta = textareaRef.current
     if (!ta) return
@@ -81,7 +195,6 @@ export default function ChatPage() {
       timestamp: new Date(),
     }
 
-    // Store-a boş mesaj əlavə et (streaming üçün), DB-yə hələ yazma
     useChatStore.setState((state) => ({
       chats: state.chats.map((c) => {
         if (c.id !== chatId) return c
@@ -100,21 +213,21 @@ export default function ChatPage() {
       await sendMessage(history, (chunk) => {
         finalContent += chunk
         const { chats } = useChatStore.getState()
-        const updated = chats.map((c) => {
-          if (c.id !== chatId) return c
-          return {
-            ...c,
-            messages: c.messages.map((m) =>
-              m.id === assistantMessageId
-                ? { ...m, content: m.content + chunk }
-                : m
-            ),
-          }
+        useChatStore.setState({
+          chats: chats.map((c) => {
+            if (c.id !== chatId) return c
+            return {
+              ...c,
+              messages: c.messages.map((m) =>
+                m.id === assistantMessageId
+                  ? { ...m, content: m.content + chunk }
+                  : m
+              ),
+            }
+          }),
         })
-        useChatStore.setState({ chats: updated })
       })
 
-      // Streaming bitdi — final cavabı Supabase-ə saxla
       await supabase.from('messages').insert({
         id: assistantMessageId,
         chat_id: chatId,
@@ -127,20 +240,18 @@ export default function ChatPage() {
     } catch {
       const errorText = 'Xəta baş verdi. Yenidən cəhd edin.'
       finalContent = errorText
-
       const { chats } = useChatStore.getState()
-      const updated = chats.map((c) => {
-        if (c.id !== chatId) return c
-        return {
-          ...c,
-          messages: c.messages.map((m) =>
-            m.id === assistantMessageId ? { ...m, content: errorText } : m
-          ),
-        }
+      useChatStore.setState({
+        chats: chats.map((c) => {
+          if (c.id !== chatId) return c
+          return {
+            ...c,
+            messages: c.messages.map((m) =>
+              m.id === assistantMessageId ? { ...m, content: errorText } : m
+            ),
+          }
+        }),
       })
-      useChatStore.setState({ chats: updated })
-
-      // Xəta mesajını da DB-yə yaz
       await supabase.from('messages').insert({
         id: assistantMessageId,
         chat_id: chatId,
@@ -165,10 +276,9 @@ export default function ChatPage() {
   return (
     <div className="flex flex-col h-full" style={{ background: 'var(--bg-primary)' }}>
 
-      {/* ── Messages area ───────────────────────────────── */}
+      {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-6 space-y-5">
 
-        {/* Empty state */}
         {!currentChat?.messages.length && (
           <div className="flex flex-col items-center justify-center h-full text-center gap-3 fade-in">
             <div
@@ -181,10 +291,7 @@ export default function ChatPage() {
             >
               ⚡
             </div>
-            <h2
-              className="text-3xl font-black gradient-text"
-              style={{ fontFamily: "'JetBrains Mono', monospace" }}
-            >
+            <h2 className="text-3xl font-black gradient-text" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
               ARN AI
             </h2>
             <p className="font-mono text-xs mb-2" style={{ color: 'var(--text-secondary)' }}>
@@ -193,7 +300,6 @@ export default function ChatPage() {
             <p className="text-sm max-w-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
               Penetration testing, etik hacking və kibertəhlükəsizlik haqqında suallarınızı soruşun.
             </p>
-
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-4 w-full max-w-lg">
               {SUGGESTIONS.map((q) => (
                 <button
@@ -226,7 +332,6 @@ export default function ChatPage() {
           </div>
         )}
 
-        {/* Messages */}
         {currentChat?.messages.map((message) => (
           <div
             key={message.id}
@@ -247,9 +352,9 @@ export default function ChatPage() {
             )}
 
             <div
-              className={`max-w-[75%] rounded-2xl px-4 py-3 text-sm leading-relaxed markdown-content ${
-                message.role === 'assistant' && !message.content ? 'typing-cursor' : ''
-              }`}
+              className={`rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+                message.role === 'user' ? 'max-w-[75%]' : 'max-w-[85%]'
+              } ${message.role === 'assistant' && !message.content ? 'typing-cursor' : ''}`}
               style={
                 message.role === 'user'
                   ? {
@@ -266,7 +371,13 @@ export default function ChatPage() {
                     }
               }
             >
-              {message.content || (isLoading ? '' : 'Cavab yüklənir...')}
+              {message.role === 'assistant' ? (
+                message.content
+                  ? <MarkdownMessage content={message.content} />
+                  : <span className="typing-cursor" style={{ color: 'var(--text-secondary)' }} />
+              ) : (
+                message.content
+              )}
             </div>
 
             {message.role === 'user' && (
@@ -287,7 +398,7 @@ export default function ChatPage() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* ── Input area ──────────────────────────────────── */}
+      {/* Input */}
       <div
         className="px-4 pt-3 pb-4"
         style={{
@@ -297,17 +408,11 @@ export default function ChatPage() {
       >
         {user?.plan === 'free' && (
           <div className="flex items-center justify-between mb-3 px-1">
-            <span
-              className="font-mono text-xs flex items-center gap-1.5"
-              style={{ color: 'var(--text-secondary)' }}
-            >
+            <span className="font-mono text-xs flex items-center gap-1.5" style={{ color: 'var(--text-secondary)' }}>
               <span style={{ color: 'var(--accent-primary)' }}>//</span>
               token: {user.tokens_used}/{user.tokens_limit}
             </span>
-            <div
-              className="w-28 h-1 rounded-full overflow-hidden"
-              style={{ background: 'rgba(255,255,255,0.08)' }}
-            >
+            <div className="w-28 h-1 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.08)' }}>
               <div
                 className="h-full rounded-full transition-all"
                 style={{

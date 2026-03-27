@@ -58,7 +58,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <div
       className="flex h-screen overflow-hidden"
-      style={{ background: 'var(--bg-primary)', fontFamily: "'JetBrains Mono', monospace" }}
+      style={{ background: 'var(--bg-primary)' }}
     >
       {/* ── Mobil overlay (sidebar açıqsa qaraldır) ─── */}
       {sidebarOpen && (

@@ -15,7 +15,6 @@ const SUGGESTIONS = [
   'XSS hücumu nədir?',
 ]
 
-// Kod bloku komponenti
 const CodeBlock = ({ language, value }: { language: string; value: string }) => {
   const [copied, setCopied] = useState(false)
 
@@ -27,21 +26,23 @@ const CodeBlock = ({ language, value }: { language: string; value: string }) => 
 
   return (
     <div className="rounded-xl overflow-hidden my-3" style={{ border: '1px solid rgba(99,102,241,0.25)' }}>
-      {/* Kod başlığı */}
       <div
         className="flex items-center justify-between px-4 py-2"
         style={{ background: 'rgba(99,102,241,0.1)', borderBottom: '1px solid rgba(99,102,241,0.2)' }}
       >
-        <span className="text-xs font-mono" style={{ color: 'var(--accent-primary)' }}>
+        <span style={{ color: 'var(--accent-primary)', fontSize: '0.75rem', fontFamily: 'monospace' }}>
           {language || 'code'}
         </span>
         <button
           onClick={handleCopy}
-          className="text-xs px-2 py-1 rounded-lg transition-all font-mono"
           style={{
             background: copied ? 'rgba(34,197,94,0.15)' : 'rgba(99,102,241,0.15)',
             color: copied ? '#4ade80' : 'var(--accent-primary)',
             border: `1px solid ${copied ? 'rgba(34,197,94,0.3)' : 'rgba(99,102,241,0.3)'}`,
+            fontSize: '0.72rem',
+            padding: '2px 10px',
+            borderRadius: '8px',
+            fontFamily: 'Inter, sans-serif',
           }}
         >
           {copied ? '✓ kopyalandı' : 'kopyala'}
@@ -64,7 +65,6 @@ const CodeBlock = ({ language, value }: { language: string; value: string }) => 
   )
 }
 
-// Markdown renderer
 const MarkdownMessage = ({ content }: { content: string }) => (
   <ReactMarkdown
     components={{
@@ -75,8 +75,14 @@ const MarkdownMessage = ({ content }: { content: string }) => (
           <CodeBlock language={match[1]} value={String(children).replace(/\n$/, '')} />
         ) : (
           <code
-            className="px-1.5 py-0.5 rounded text-xs font-mono"
-            style={{ background: 'rgba(99,102,241,0.15)', color: '#a5b4fc' }}
+            style={{
+              background: 'rgba(99,102,241,0.15)',
+              color: '#a5b4fc',
+              fontFamily: 'monospace',
+              fontSize: '0.82rem',
+              padding: '2px 6px',
+              borderRadius: '4px',
+            }}
             {...props}
           >
             {children}
@@ -84,45 +90,44 @@ const MarkdownMessage = ({ content }: { content: string }) => (
         )
       },
       h1: ({ children }) => (
-        <h1 className="text-xl font-bold mb-3 mt-4" style={{ color: 'var(--text-primary)' }}>{children}</h1>
+        <h1 style={{ fontSize: '1.35rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.6rem', marginTop: '1rem', letterSpacing: '-0.02em' }}>{children}</h1>
       ),
       h2: ({ children }) => (
-        <h2 className="text-lg font-bold mb-2 mt-3" style={{ color: 'var(--text-primary)' }}>{children}</h2>
+        <h2 style={{ fontSize: '1.15rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.5rem', marginTop: '0.9rem', letterSpacing: '-0.02em' }}>{children}</h2>
       ),
       h3: ({ children }) => (
-        <h3 className="text-base font-semibold mb-2 mt-3" style={{ color: '#a5b4fc' }}>{children}</h3>
+        <h3 style={{ fontSize: '1rem', fontWeight: 600, color: '#a5b4fc', marginBottom: '0.4rem', marginTop: '0.8rem' }}>{children}</h3>
       ),
       p: ({ children }) => (
-        <p className="mb-2 leading-relaxed" style={{ color: '#cbd5e1' }}>{children}</p>
+        <p style={{ marginBottom: '0.7rem', lineHeight: 1.75, color: '#d1d5db', fontSize: '0.93rem' }}>{children}</p>
       ),
       ul: ({ children }) => (
-        <ul className="mb-3 space-y-1" style={{ paddingLeft: '1.25rem' }}>{children}</ul>
+        <ul style={{ marginBottom: '0.75rem', paddingLeft: '1.25rem' }}>{children}</ul>
       ),
       ol: ({ children }) => (
-        <ol className="mb-3 space-y-1" style={{ paddingLeft: '1.25rem', listStyleType: 'decimal' }}>{children}</ol>
+        <ol style={{ marginBottom: '0.75rem', paddingLeft: '1.25rem', listStyleType: 'decimal' }}>{children}</ol>
       ),
       li: ({ children }) => (
-        <li className="text-sm leading-relaxed" style={{ color: '#cbd5e1', listStyleType: 'disc' }}>{children}</li>
+        <li style={{ color: '#d1d5db', lineHeight: 1.7, fontSize: '0.93rem', marginBottom: '0.25rem', listStyleType: 'disc' }}>{children}</li>
       ),
       strong: ({ children }) => (
-        <strong className="font-semibold" style={{ color: '#a5b4fc' }}>{children}</strong>
+        <strong style={{ fontWeight: 600, color: '#e2e8f0' }}>{children}</strong>
       ),
       blockquote: ({ children }) => (
-        <blockquote
-          className="pl-3 my-2 text-sm italic"
-          style={{
-            borderLeft: '3px solid var(--accent-primary)',
-            color: 'var(--text-secondary)',
-            background: 'rgba(99,102,241,0.05)',
-            padding: '0.5rem 0.75rem',
-            borderRadius: '0 0.5rem 0.5rem 0',
-          }}
-        >
+        <blockquote style={{
+          borderLeft: '3px solid var(--accent-primary)',
+          color: 'var(--text-secondary)',
+          background: 'rgba(99,102,241,0.05)',
+          padding: '0.5rem 0.75rem',
+          borderRadius: '0 0.5rem 0.5rem 0',
+          margin: '0.5rem 0',
+          fontSize: '0.9rem',
+        }}>
           {children}
         </blockquote>
       ),
       hr: () => (
-        <hr className="my-3" style={{ borderColor: 'rgba(99,102,241,0.2)' }} />
+        <hr style={{ borderColor: 'rgba(99,102,241,0.2)', margin: '0.75rem 0' }} />
       ),
     }}
   >
@@ -291,13 +296,16 @@ export default function ChatPage() {
             >
               ⚡
             </div>
-            <h2 className="text-3xl font-black gradient-text" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+            <h2
+              className="text-3xl font-black gradient-text"
+              style={{ fontFamily: "'JetBrains Mono', monospace" }}
+            >
               ARN AI
             </h2>
-            <p className="font-mono text-xs mb-2" style={{ color: 'var(--text-secondary)' }}>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.75rem', fontFamily: 'monospace' }}>
               // kibertəhlükəsizlik_assistantı
             </p>
-            <p className="text-sm max-w-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', maxWidth: '24rem', lineHeight: 1.6 }}>
               Penetration testing, etik hacking və kibertəhlükəsizlik haqqında suallarınızı soruşun.
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-4 w-full max-w-lg">
@@ -305,11 +313,13 @@ export default function ChatPage() {
                 <button
                   key={q}
                   onClick={() => setInput(q)}
-                  className="p-3 text-xs text-left rounded-xl transition-all font-mono"
+                  className="p-3 text-left rounded-xl transition-all"
                   style={{
                     background: 'rgba(255,255,255,0.04)',
                     border: '1px solid rgba(255,255,255,0.08)',
                     color: 'var(--text-secondary)',
+                    fontSize: '0.82rem',
+                    fontFamily: 'Inter, sans-serif',
                   }}
                   onMouseEnter={(e) => {
                     const el = e.currentTarget
@@ -352,7 +362,7 @@ export default function ChatPage() {
             )}
 
             <div
-              className={`rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+              className={`rounded-2xl px-4 py-3 leading-relaxed ${
                 message.role === 'user' ? 'max-w-[75%]' : 'max-w-[85%]'
               } ${message.role === 'assistant' && !message.content ? 'typing-cursor' : ''}`}
               style={
@@ -362,12 +372,17 @@ export default function ChatPage() {
                       border: '1px solid rgba(99,102,241,0.3)',
                       color: 'var(--text-primary)',
                       borderBottomRightRadius: '4px',
+                      fontSize: '0.93rem',
+                      fontFamily: 'Inter, sans-serif',
+                      lineHeight: 1.65,
                     }
                   : {
                       background: 'var(--bg-secondary)',
                       border: '1px solid var(--border-color)',
-                      color: '#cbd5e1',
+                      color: '#d1d5db',
                       borderBottomLeftRadius: '4px',
+                      fontSize: '0.93rem',
+                      fontFamily: 'Inter, sans-serif',
                     }
               }
             >
@@ -408,9 +423,8 @@ export default function ChatPage() {
       >
         {user?.plan === 'free' && (
           <div className="flex items-center justify-between mb-3 px-1">
-            <span className="font-mono text-xs flex items-center gap-1.5" style={{ color: 'var(--text-secondary)' }}>
-              <span style={{ color: 'var(--accent-primary)' }}>//</span>
-              token: {user.tokens_used}/{user.tokens_limit}
+            <span style={{ color: 'var(--text-secondary)', fontSize: '0.75rem' }}>
+              <span style={{ color: 'var(--accent-primary)' }}>//</span> token: {user.tokens_used}/{user.tokens_limit}
             </span>
             <div className="w-28 h-1 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.08)' }}>
               <div
@@ -441,11 +455,13 @@ export default function ChatPage() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="// sualınızı yazın...  (Enter göndər · Shift+Enter yeni sətir)"
-            className="flex-1 bg-transparent text-sm resize-none focus:outline-none py-1"
+            placeholder="Sualınızı yazın...  (Enter göndər · Shift+Enter yeni sətir)"
+            className="flex-1 bg-transparent resize-none focus:outline-none py-1"
             style={{
               color: 'var(--text-primary)',
-              fontFamily: "'JetBrains Mono', monospace",
+              fontFamily: 'Inter, sans-serif',
+              fontSize: '0.93rem',
+              lineHeight: 1.6,
               minHeight: '24px',
               maxHeight: '128px',
             }}

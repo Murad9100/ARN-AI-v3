@@ -4,14 +4,14 @@ export const LEMON_PLANS = {
     price: '$9.99',
     trialDays: 30,
     variantId: '1457042',
-    paymentLink: 'https://arn-ai.lemonsqueezy.com/buy/1457042',
+    paymentLink: 'https://arn-ai.lemonsqueezy.com/checkout/buy/1cfec579-c8ef-4e0b-b1a7-41d0d17ede42',
   },
   max: {
     name: 'Max',
     price: '$29.99',
     trialDays: 0,
     variantId: '1457051',
-    paymentLink: 'https://arn-ai.lemonsqueezy.com/buy/1457051',
+    paymentLink: 'https://arn-ai.lemonsqueezy.com/checkout/buy/df95e11d-09cc-4eb0-9418-97106435c49c',
   },
 }
 
@@ -26,5 +26,4 @@ export function redirectToCheckout(plan: 'pro' | 'max', email?: string) {
   window.open(url, '_blank')
 }
 
-// Köhnə Stripe ilə uyğunluq üçün
 export const STRIPE_PLANS = LEMON_PLANS

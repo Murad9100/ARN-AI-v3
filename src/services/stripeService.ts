@@ -15,8 +15,13 @@ export const STRIPE_PLANS = {
 
 export function redirectToCheckout(plan: 'pro' | 'max', email?: string) {
   const { paymentLink } = STRIPE_PLANS[plan]
-  const url = email
-    ? `${paymentLink}?prefilled_email=${encodeURIComponent(email)}`
-    : paymentLink
+  
+  const params = new URLSearchParams()
+  if (email) params.set('prefilled_email', email)
+  
+  // Ödənişdən sonra sayta qayıt
+  params.set('success_url', `${window.location.origin}/chat?upgraded=true`)
+
+  const url = `${paymentLink}?${params.toString()}`
   window.open(url, '_blank')
 }

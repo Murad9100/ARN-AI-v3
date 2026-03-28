@@ -1,23 +1,30 @@
-export const STRIPE_PLANS = {
+export const LEMON_PLANS = {
   pro: {
     name: 'Pro',
     price: '$9.99',
     trialDays: 30,
-    paymentLink: 'https://buy.stripe.com/LIVE_PRO_LINK',
+    variantId: '1457042',
+    paymentLink: 'https://arn-ai.lemonsqueezy.com/buy/1457042',
   },
   max: {
     name: 'Max',
     price: '$29.99',
     trialDays: 0,
-    paymentLink: 'https://buy.stripe.com/LIVE_MAX_LINK',
+    variantId: '1457051',
+    paymentLink: 'https://arn-ai.lemonsqueezy.com/buy/1457051',
   },
 }
-```
 
----
+export function redirectToCheckout(plan: 'pro' | 'max', email?: string) {
+  const { paymentLink } = LEMON_PLANS[plan]
 
-## 4. Live Webhook yarat
+  const params = new URLSearchParams()
+  if (email) params.set('checkout[email]', email)
+  params.set('checkout[redirect_url]', `${window.location.origin}/chat?upgraded=true`)
 
-Stripe → **Developers → Webhooks** → yeni endpoint əlavə et:
-```
-https://qgeocpxddcmqpxkbfgfh.supabase.co/functions/v1/stripe-webhook
+  const url = `${paymentLink}?${params.toString()}`
+  window.open(url, '_blank')
+}
+
+// Köhnə Stripe ilə uyğunluq üçün
+export const STRIPE_PLANS = LEMON_PLANS

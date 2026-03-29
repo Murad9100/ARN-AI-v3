@@ -166,7 +166,6 @@ export default function ChatPage() {
     ta.style.height = Math.min(ta.scrollHeight, 128) + 'px'
   }, [input])
 
-  // Ödənişdən sonra plan yenilənməsi
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     if (params.get('upgraded') === 'true') {
@@ -241,7 +240,7 @@ export default function ChatPage() {
             }
           }),
         })
-      })
+      }, user.plan)
 
       await supabase.from('messages').insert({
         id: assistantMessageId,
@@ -291,7 +290,6 @@ export default function ChatPage() {
   return (
     <div className="flex flex-col h-full" style={{ background: 'var(--bg-primary)' }}>
 
-      {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-6 space-y-5">
 
         {!currentChat?.messages.length && (
@@ -423,7 +421,6 @@ export default function ChatPage() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input */}
       <div
         className="px-4 pt-3 pb-4"
         style={{
@@ -503,6 +500,3 @@ export default function ChatPage() {
           </button>
         </div>
       </div>
-    </div>
-  )
-}

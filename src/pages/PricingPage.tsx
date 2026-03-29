@@ -314,7 +314,7 @@ export default function PricingPage() {
           className="text-center mt-10 font-mono text-xs"
           style={{ color: 'rgba(148,163,184,0.3)' }}
         >
-          // Bütün planlar Stripe ilə təhlükəsiz ödəniş · İstənilən vaxt ləğv edilə bilər
+          // // Bütün planlar LemonSqueezy  ilə təhlükəsiz ödəniş · İstənilən vaxt ləğv edilə bilər
         </p>
       </div>
     </div>

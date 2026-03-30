@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useAuthStore } from './store/authStore'
+import { supabase } from './lib/supabase'
 import LandingPage from './pages/LandingPage'
 import Layout from './components/Layout'
 import ProtectedRoute from './components/ProtectedRoute'
@@ -15,6 +16,14 @@ export default function App() {
 
   useEffect(() => {
     fetchProfile()
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) {
+        fetchProfile()
+      }
+    })
+
+    return () => subscription.unsubscribe()
   }, [])
 
   if (loading) {
@@ -31,7 +40,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<LandingPage />} />
+        <Route path="/" element={user ? <Navigate to="/chat" /> : <LandingPage />} />
         <Route path="/login" element={user ? <Navigate to="/chat" /> : <LoginPage />} />
         <Route path="/register" element={user ? <Navigate to="/chat" /> : <RegisterPage />} />
         <Route path="/pricing" element={<PricingPage />} />
@@ -54,5 +63,3 @@ export default function App() {
         <Route path="*" element={<Navigate to={user ? "/chat" : "/"} />} />
       </Routes>
     </BrowserRouter>
-  )
-}

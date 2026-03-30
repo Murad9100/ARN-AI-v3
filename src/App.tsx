@@ -63,3 +63,5 @@ export default function App() {
         <Route path="*" element={<Navigate to={user ? "/chat" : "/"} />} />
       </Routes>
     </BrowserRouter>
+  )
+}

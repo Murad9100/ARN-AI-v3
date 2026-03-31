@@ -12,14 +12,21 @@ splash.style.cssText = `
 
 const style = document.createElement('style')
 style.textContent = `
-  @keyframes arnPulse {
-    0% { transform: scale(0.5); opacity: 0; filter: drop-shadow(0 0 0px #00d4ff); }
-    50% { transform: scale(1.1); opacity: 1; filter: drop-shadow(0 0 30px #00d4ff); }
+  @keyframes arnIntro {
+    0% { transform: scale(0.3); opacity: 0; filter: drop-shadow(0 0 0px #fff); }
+    40% { transform: scale(1.15); opacity: 1; filter: drop-shadow(0 0 40px #fff) drop-shadow(0 0 80px #00d4ff); }
+    60% { transform: scale(0.95); filter: drop-shadow(0 0 20px #fff); }
+    80% { transform: scale(1.05); filter: drop-shadow(0 0 30px #00d4ff); }
     100% { transform: scale(1); opacity: 1; filter: drop-shadow(0 0 15px #00d4ff); }
   }
+  @keyframes fadeOut {
+    0% { opacity: 1; }
+    100% { opacity: 0; }
+  }
   #arn-logo {
-    animation: arnPulse 1.5s ease-out forwards;
-    width: 200px;
+    animation: arnIntro 2s ease-out forwards;
+    width: 220px;
+    filter: invert(1);
   }
 `
 document.head.appendChild(style)
@@ -34,7 +41,7 @@ setTimeout(() => {
   splash.style.opacity = '0'
   splash.style.transition = 'opacity 0.8s'
   setTimeout(() => splash.remove(), 800)
-}, 2500)
+}, 3500)
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

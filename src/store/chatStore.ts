@@ -23,15 +23,12 @@ export const useChatStore = create<ChatState>((set, get) => ({
       .select('*')
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
-
     if (error || !chats) return
-
     const { data: messages } = await supabase
       .from('messages')
       .select('*')
       .in('chat_id', chats.map((c) => c.id))
       .order('timestamp', { ascending: true })
-
     const chatsWithMessages: Chat[] = chats.map((chat) => ({
       ...chat,
       created_at: new Date(chat.created_at),
@@ -44,7 +41,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
           timestamp: new Date(m.timestamp),
         })),
     }))
-
     set({ chats: chatsWithMessages })
   },
 
@@ -57,23 +53,28 @@ export const useChatStore = create<ChatState>((set, get) => ({
       messages: [],
       created_at: new Date(),
     }
-
-    await supabase.from('chats').insert({
-      id,
-      user_id: userId,
-      title: 'Yeni Söhbət',
-      created_at: newChat.created_at.toISOString(),
-    })
-
+    // Supabase-ə YAZMIR — yalnız yaddaşda saxlayır
     set((state) => ({
       chats: [newChat, ...state.chats],
       currentChatId: id,
     }))
-
     return id
   },
 
   addMessage: async (chatId: string, message: Message) => {
+    const { chats } = get()
+    const chat = chats.find((c) => c.id === chatId)
+
+    // Əgər chat hələ Supabase-də yoxdursa — ilk mesajda yarat
+    if (chat && chat.messages.length === 0 && message.role === 'user') {
+      await supabase.from('chats').insert({
+        id: chat.id,
+        user_id: chat.user_id,
+        title: message.content.slice(0, 30) + '...',
+        created_at: chat.created_at.toISOString(),
+      })
+    }
+
     await supabase.from('messages').insert({
       id: message.id,
       chat_id: chatId,
@@ -83,23 +84,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
     })
 
     set((state) => ({
-      chats: state.chats.map((chat) => {
-        if (chat.id !== chatId) return chat
-
-        const isFirstMessage = chat.messages.length === 0 && message.role === 'user'
+      chats: state.chats.map((c) => {
+        if (c.id !== chatId) return c
+        const isFirstMessage = c.messages.length === 0 && message.role === 'user'
         const title = isFirstMessage
           ? message.content.slice(0, 30) + '...'
-          : chat.title
-
-        if (isFirstMessage) {
-          supabase
-            .from('chats')
-            .update({ title })
-            .eq('id', chatId)
-            .then(() => {})
-        }
-
-        return { ...chat, title, messages: [...chat.messages, message] }
+          : c.title
+        return { ...c, title, messages: [...c.messages, message] }
       }),
     }))
   },
@@ -108,7 +99,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   deleteChat: async (id: string) => {
     await supabase.from('chats').delete().eq('id', id)
-
     set((state) => ({
       chats: state.chats.filter((c) => c.id !== id),
       currentChatId: state.currentChatId === id ? null : state.currentChatId,

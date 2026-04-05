@@ -5,35 +5,41 @@ import type { User } from '../types'
 interface AuthState {
   user: User | null
   loading: boolean
+  // Yeni adlar (LandingPage üçün)
   login: (email: string, password: string) => Promise<void>
   register: (email: string, password: string, fullName: string) => Promise<void>
+  // Köhnə adlar (LoginPage/RegisterPage üçün)
+  signIn: (email: string, password: string) => Promise<void>
+  signUp: (email: string, password: string, fullName: string) => Promise<void>
+  
   signOut: () => Promise<void>
   fetchProfile: () => Promise<void>
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   loading: true,
 
-  // LandingPage.tsx(236,17) xətasını düzəldir
+  // LOGIN MƏNTİQİ (Hər iki ada bağlandı)
   login: async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) throw error
   },
+  signIn: async (email: string, password: string) => {
+    return get().login(email, password)
+  },
 
-  // LandingPage.tsx(236,24) xətasını düzəldir
+  // REGISTER MƏNTİQİ (Hər iki ada bağlandı)
   register: async (email: string, password: string, fullName: string) => {
     const { error } = await supabase.auth.signUp({ 
       email, 
       password,
-      options: {
-        data: {
-          full_name: fullName
-        }
-      }
+      options: { data: { full_name: fullName } }
     })
-
     if (error) throw error
+  },
+  signUp: async (email: string, password: string, fullName: string) => {
+    return get().register(email, password, fullName)
   },
 
   signOut: async () => {
@@ -43,7 +49,6 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   fetchProfile: async () => {
     const { data: { user } } = await supabase.auth.getUser()
-    
     if (!user) {
       set({ user: null, loading: false })
       return

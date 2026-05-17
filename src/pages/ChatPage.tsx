@@ -5,11 +5,54 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import ReactMarkdown from 'react-markdown'
-import { useAuthStore } from '../store/authStore'
-import { useChatStore } from '../store/chatStore'
-import { sendMessage } from '../services/aiService'
-import { supabase } from '../lib/supabase'
-import type { Message } from '../types'
+
+// =========================================================================
+// DİQQƏT: Öz layihənizə kopyalayarkən bu importların qarşısındakı '//' işarəsini silin
+// və altındakı MOCK BÖLMƏSİNİ tamamilə silin.
+// =========================================================================
+// import { useAuthStore } from '../store/authStore'
+// import { useChatStore } from '../store/chatStore'
+// import { sendMessage } from '../services/aiService'
+// import { supabase } from '../lib/supabase'
+// import type { Message } from '../types'
+
+// --- MOCK BÖLMƏSİ (Yalnız bu pəncərədə xəta verməməsi üçün əlavə edilib) ---
+type Message = { id: string; role: 'user' | 'assistant'; content: string; timestamp: Date }
+const useAuthStore = () => ({ user: { id: '1', plan: 'free', tokens_used: 10, tokens_limit: 50, full_name: 'İstifadəçi' }, fetchProfile: async () => {} })
+
+let mockChats: any[] = [{ id: 'chat1', title: 'Yeni Söhbət', messages: [], createdAt: new Date() }];
+
+const useChatStore = Object.assign(
+  () => ({
+    getCurrentChat: () => mockChats[0],
+    addMessage: async (chatId: string, msg: any) => { mockChats[0].messages.push(msg) },
+    addChat: async () => 'chat1',
+    loadChats: () => {},
+    currentChatId: 'chat1',
+    setCurrentChat: () => {}
+  }),
+  {
+    setState: (fn: any) => {
+      if (typeof fn === 'function') {
+         const next = fn({ chats: mockChats });
+         mockChats = next.chats || mockChats;
+      } else {
+         mockChats = fn.chats || mockChats;
+      }
+    },
+    getState: () => ({ chats: mockChats })
+  }
+)
+
+const sendMessage = async (h: any, cb: (chunk: string) => void, plan: string) => {
+  const text = "Sizin orijinal `import` kodlarınız bu mühitdə (Canvas) tapılmadığı üçün müvəqqəti MOCK (saxta) xidmətindən cavab alırsınız. Kodu öz layihənizə əlavə etdikdə əsl AI işləyəcək və dizayn tam yerinə oturacaq!";
+  for(let i=0; i<text.length; i++) {
+    cb(text[i]);
+    await new Promise(r => setTimeout(r, 20));
+  }
+};
+const supabase = { from: (table: string) => ({ insert: async (data: any) => {} }) }
+// ---------------------------------------------------------------------------
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Types & Canvas Helpers
@@ -621,4 +664,27 @@ export default function ChatPage() {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, marginTop: 8, fontSize: 7, letterSpacing: 2, color: 'rgba(148,163,184,0.18)' }}>
-            <span>AZTU
+            <span>AZTU</span><span style={{ color: 'rgba(99,102,241,0.2)' }}>·</span><span>CYBERSEC DEPT</span>
+          </div>
+        </div>
+
+      </div>
+
+      {/* ══════════════════════════════════════════════════════════════════
+          HUD OVERLAYS (Absolute inside relative parent)
+      ══════════════════════════════════════════════════════════════════ */}
+      <div style={{ position: 'absolute', bottom: 12, left: 12, zIndex: 3, fontSize: 7, letterSpacing: 2, color: 'rgba(99,102,241,0.2)', lineHeight: 2, pointerEvents: 'none' }}>
+        <div>NEURAL.CORE ▸ ONLINE</div>
+        <div>LATENCY ▸ &lt;12ms</div>
+      </div>
+
+      <div style={{ position: 'absolute', bottom: 12, right: 12, zIndex: 3, fontSize: 7, letterSpacing: 2, color: 'rgba(99,102,241,0.2)', lineHeight: 2, textAlign: 'right', pointerEvents: 'none' }}>
+        <div>UPTIME ▸ 99.97%</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end' }}>
+          <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#4ade80', boxShadow: '0 0 4px #4ade80', display: 'inline-block', animation: 'statusBlink 2s ease-in-out infinite' }} />
+          CORE ACTIVE
+        </div>
+      </div>
+    </div>
+  )
+}

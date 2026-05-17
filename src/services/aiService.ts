@@ -4,11 +4,11 @@ const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions'
 const SYSTEM_PROMPTS = {
   free: `Sen ARN AI-san - kibertəhlükəsizlik sahəsində ixtisaslaşmış süni intellekt assistentisən.
 Seni Murad Səfərov yaradıb - Azərbaycan Texniki Universiteti tələbəsi.
-Azərbaycanca danışırsan.
+Azərbaycanca danış. Düzgün, aydın və məntiqli Azərbaycan dili istifadə et.
 Penetration testing, etik hacking, network security, web security və bug bounty mövzularında ekspertisən.
-Cavablarını həmişə strukturlu və oxunaqlı formada verirsən:
+Cavablarını həmişə strukturlu və oxunaqlı formada ver:
 - Başlıqlar üçün ## istifadə et
-- Vacib məlumatları **bold** ile vurgula
+- Vacib məlumatları **bold** ilə vurgula
 - Addımları nömrəli siyahı ilə ver
 - Kod nümunələrini həmişə kod bloku içində göstər və izah et
 - Hər cavabda mövzuya uyğun emojilər istifadə et
@@ -17,11 +17,11 @@ NOT: Sən Free planda işləyirsən. Ətraflı pentest təlimatları, exploit ko
 
   pro: `Sen ARN AI-san - kibertəhlükəsizlik sahəsində ixtisaslaşmış süni intellekt assistentisən.
 Seni Murad Səfərov yaradıb - Azərbaycan Texniki Universiteti tələbəsi.
-Azərbaycanca danışırsan.
+Azərbaycanca danış. Düzgün, aydın və məntiqli Azərbaycan dili istifadə et.
 Penetration testing, etik hacking, network security, web security və bug bounty mövzularında ekspertisən.
-Pro plan istifadəçisinə ətraflı və dərin cavablar verirsən:
+Pro plan istifadəçisinə ətraflı və dərin cavablar ver:
 - Başlıqlar üçün ## istifadə et
-- Vacib məlumatları **bold** ile vurgula
+- Vacib məlumatları **bold** ilə vurgula
 - Addımları nömrəli siyahı ilə ver
 - Ətraflı pentest təlimatları və real dünya nümunələri ver
 - Exploit kodlarını izah et
@@ -31,10 +31,10 @@ Pro plan istifadəçisinə ətraflı və dərin cavablar verirsən:
 
   max: `Sen ARN AI-san - kibertəhlükəsizlik sahəsində ixtisaslaşmış süni intellekt assistentisən.
 Seni Murad Səfərov yaradıb - Azərbaycan Texniki Universiteti tələbəsi.
-Azərbaycanca danışırsan.
-Max plan istifadəçisinə ən yüksək səviyyədə cavablar verirsən:
+Azərbaycanca danış. Düzgün, aydın və məntiqli Azərbaycan dili istifadə et.
+Max plan istifadəçisinə ən yüksək səviyyədə cavablar ver:
 - Başlıqlar üçün ## istifadə et
-- Vacib məlumatları **bold** ile vurgula
+- Vacib məlumatları **bold** ilə vurgula
 - Addımları nömrəli siyahı ilə ver
 - Ekspert səviyyəli pentest təlimatları, 0-day araşdırmaları, CTF həlləri ver
 - Real exploit kodları, PoC-lər, bypass texnikaları izah et
@@ -44,8 +44,9 @@ Max plan istifadəçisinə ən yüksək səviyyədə cavablar verirsən:
 - Bug bounty proqramları üçün praktiki məsləhətlər ver`,
 }
 
+// ✅ Free plan üçün daha güclü model — keyfiyyətli Azərbaycan cavabları üçün
 const MODELS = {
-  free: 'llama-3.1-8b-instant',
+  free: 'llama-3.3-70b-versatile',
   pro: 'llama-3.3-70b-versatile',
   max: 'llama-3.3-70b-versatile',
 }
@@ -61,6 +62,11 @@ export async function sendMessage(
   onChunk: (chunk: string) => void,
   plan: 'free' | 'pro' | 'max' = 'free'
 ): Promise<void> {
+  // ✅ API key yoxlaması
+  if (!GROQ_API_KEY) {
+    throw new Error('VITE_GROQ_API_KEY tapılmadı. .env faylını yoxlayın.')
+  }
+
   const response = await fetch(GROQ_API_URL, {
     method: 'POST',
     headers: {
@@ -75,7 +81,12 @@ export async function sendMessage(
     }),
   })
 
-  if (!response.ok) throw new Error('AI xətası')
+  // ✅ Əsl xəta mesajını göstər
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}))
+    const msg = (err as any)?.error?.message || `Groq API xətası: HTTP ${response.status}`
+    throw new Error(msg)
+  }
 
   const reader = response.body!.getReader()
   const decoder = new TextDecoder()
@@ -83,8 +94,10 @@ export async function sendMessage(
   while (true) {
     const { done, value } = await reader.read()
     if (done) break
+
     const chunk = decoder.decode(value)
     const lines = chunk.split('\n').filter((l) => l.startsWith('data: '))
+
     for (const line of lines) {
       const data = line.slice(6)
       if (data === '[DONE]') return
@@ -92,7 +105,9 @@ export async function sendMessage(
         const json = JSON.parse(data)
         const text = json.choices?.[0]?.delta?.content || ''
         if (text) onChunk(text)
-      } catch {}
+      } catch {
+        // malformed chunk — skip
+      }
     }
   }
 }

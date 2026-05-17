@@ -7,8 +7,8 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import ReactMarkdown from 'react-markdown'
 
 // =========================================================================
-// DİQQƏT: Öz layihənizə kopyalayarkən bu importların qarşısındakı '//' işarəsini silin
-// və altındakı MOCK BÖLMƏSİNİ tamamilə silin.
+// ⚠️ DİQQƏT: KODU ÖZ LAYİHƏNİZƏ (VS CODE) KOPYALAYARKƏN 
+// AŞAĞIDAKİ İMPORTLARIN QARŞISINDAKI "//" İŞARƏLƏRİNİ SİLİN:
 // =========================================================================
 // import { useAuthStore } from '../store/authStore'
 // import { useChatStore } from '../store/chatStore'
@@ -16,36 +16,32 @@ import ReactMarkdown from 'react-markdown'
 // import { supabase } from '../lib/supabase'
 // import type { Message } from '../types'
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  Types & Canvas Helpers
-// ─────────────────────────────────────────────────────────────────────────────
 
-interface Message {
-  id: string
-  role: 'user' | 'assistant'
-  content: string
-  timestamp: Date
-}
+// =========================================================================
+// ⚠️ DİQQƏT: KODU ÖZ LAYİHƏNİZƏ KOPYALAYARKƏN 
+// BURADAN "MOCK BÖLMƏSİNİN SONU" YAZISINA QƏDƏR OLAN HİSSƏNİ SİLİN:
+// =========================================================================
+interface Message { id: string; role: 'user' | 'assistant'; content: string; timestamp: Date }
+interface ChatSession { id: string; title: string; messages: Message[]; createdAt: Date }
 
-interface ChatSession {
-  id: string
-  title: string
-  messages: Message[]
-  createdAt: Date
-}
+const useAuthStore = () => ({ 
+  user: { id: '1', plan: 'free', tokens_used: 10, tokens_limit: 50, full_name: 'İstifadəçi' }, 
+  fetchProfile: async () => {} 
+})
 
-// --- MOCK BÖLMƏSİ (Yalnız bu pəncərədə xəta verməməsi üçün əlavə edilib) ---
-const useAuthStore = () => ({ user: { id: '1', plan: 'free', tokens_used: 10, tokens_limit: 50, full_name: 'İstifadəçi' }, fetchProfile: async () => {} })
-
-let mockChats: ChatSession[] = [{ id: 'chat1', title: 'Yeni Söhbət', messages: [], createdAt: new Date() }];
+let mockChats: ChatSession[] = [];
 
 const useChatStore = Object.assign(
   () => ({
     getCurrentChat: () => mockChats[0] as ChatSession | undefined,
-    addMessage: async (_chatId: string, msg: Message) => { mockChats[0].messages.push(msg) },
-    addChat: async (_userId?: string) => 'chat1',
+    addMessage: async (_chatId: string, msg: Message) => { if(mockChats[0]) mockChats[0].messages.push(msg) },
+    addChat: async (_userId?: string) => {
+      const newChat = { id: 'chat1', title: 'Yeni Söhbət', messages: [], createdAt: new Date() };
+      mockChats = [newChat];
+      return 'chat1';
+    },
     loadChats: (_userId?: string) => {},
-    currentChatId: 'chat1' as string | null,
+    currentChatId: mockChats.length > 0 ? 'chat1' : null as string | null,
     setCurrentChat: (_id: string) => {},
     chats: mockChats
   }),
@@ -63,14 +59,22 @@ const useChatStore = Object.assign(
 )
 
 const sendMessage = async (_h: any, cb: (chunk: string) => void, _plan?: string) => {
-  const text = "Sizin orijinal `import` kodlarınız bu mühitdə (Canvas) tapılmadığı üçün müvəqqəti MOCK (saxta) xidmətindən cavab alırsınız. Kodu öz layihənizə əlavə etdikdə əsl AI işləyəcək və dizayn tam yerinə oturacaq!";
+  const text = "Sualınız qəbul edildi! (Qeyd: Bu cavab test mühitindən gəlir. Kodu öz layihənizə kopyaladıqda əsl AI xidmətiniz cavab verəcək).";
   for(let i=0; i<text.length; i++) {
     cb(text[i]);
     await new Promise(r => setTimeout(r, 20));
   }
 };
 const supabase = { from: (_table: string) => ({ insert: async (_data: any) => {} }) }
-// ---------------------------------------------------------------------------
+// =========================================================================
+// MOCK BÖLMƏSİNİN SONU
+// =========================================================================
+
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Types & Canvas Helpers
+// ─────────────────────────────────────────────────────────────────────────────
 
 interface Star {
   x: number; y: number; z: number
@@ -271,9 +275,9 @@ export default function ChatPage() {
   const currentChat = getCurrentChat()
 
   // Initialize data
-  useEffect(() => { if (user) loadChats(user.id) }, [user])
+  useEffect(() => { if (user) loadChats(user.id) }, [user, loadChats])
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [currentChat?.messages])
-  useEffect(() => { if (!currentChatId && user) addChat(user.id).then(id => setCurrentChat(id)) }, [user])
+  useEffect(() => { if (!currentChatId && user) addChat(user.id).then(id => setCurrentChat(id)) }, [user, currentChatId, addChat, setCurrentChat])
   
   useEffect(() => {
     const ta = textareaRef.current
@@ -289,7 +293,7 @@ export default function ChatPage() {
       window.history.replaceState({}, '', '/chat')
       alert('🎉 Planınız uğurla yeniləndi!')
     }
-  }, [])
+  }, [fetchProfile])
 
   // ── Canvas logic ──
   useEffect(() => {
@@ -485,8 +489,8 @@ export default function ChatPage() {
     const assistantMessageId = (Date.now() + 1).toString()
     const assistantMessage: Message = { id: assistantMessageId, role: 'assistant', content: '', timestamp: new Date() }
 
-    useChatStore.setState((state: { chats: ChatSession[] }) => ({
-      chats: state.chats.map((c: ChatSession) => c.id !== chatId ? c : { ...c, messages: [...c.messages, assistantMessage] })
+    useChatStore.setState((state: { chats: typeof currentChat[] }) => ({
+      chats: state.chats.map((c) => c?.id !== chatId ? c : { ...c, messages: [...(c.messages || []), assistantMessage] })
     }))
 
     const chat = getCurrentChat()
@@ -496,11 +500,11 @@ export default function ChatPage() {
     try {
       await sendMessage(history, chunk => {
         finalContent += chunk
-        const { chats } = useChatStore.getState() as { chats: ChatSession[] }
+        const { chats } = useChatStore.getState() as { chats: typeof currentChat[] }
         useChatStore.setState({
-          chats: chats.map((c: ChatSession) => c.id !== chatId ? c : {
+          chats: chats.map((c) => c?.id !== chatId ? c : {
             ...c,
-            messages: c.messages.map((m: Message) => m.id === assistantMessageId ? { ...m, content: m.content + chunk } : m)
+            messages: (c.messages || []).map((m: Message) => m.id === assistantMessageId ? { ...m, content: m.content + chunk } : m)
           })
         })
       }, user.plan)
@@ -513,11 +517,11 @@ export default function ChatPage() {
     } catch {
       const errorText = 'Xəta baş verdi. Yenidən cəhd edin.'
       finalContent = errorText
-      const { chats } = useChatStore.getState() as { chats: ChatSession[] }
+      const { chats } = useChatStore.getState() as { chats: typeof currentChat[] }
       useChatStore.setState({
-        chats: chats.map((c: ChatSession) => c.id !== chatId ? c : {
+        chats: chats.map((c) => c?.id !== chatId ? c : {
           ...c,
-          messages: c.messages.map((m: Message) => m.id === assistantMessageId ? { ...m, content: errorText } : m)
+          messages: (c.messages || []).map((m: Message) => m.id === assistantMessageId ? { ...m, content: errorText } : m)
         })
       })
       await supabase.from('messages').insert({
@@ -610,7 +614,7 @@ export default function ChatPage() {
 
         {/* Messages List */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '24px 20px', display: 'flex', flexDirection: 'column', gap: 16, position: 'relative' }}>
-          {!currentChat?.messages.length && (
+          {!currentChat?.messages?.length && (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', textAlign: 'center', gap: 14, animation: 'fadeUp 0.8s cubic-bezier(0.16,1,0.3,1) both' }}>
               <div style={{ width: 80, height: 80, borderRadius: 22, background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', animation: 'corePulse 2.5s ease-in-out infinite', position: 'relative' }}>
                 <div style={{ position: 'absolute', inset: -8, borderRadius: '50%', border: '1px solid rgba(99,102,241,0.1)', animation: 'glowRing 3s ease-in-out infinite' }} />
@@ -632,7 +636,7 @@ export default function ChatPage() {
             </div>
           )}
 
-          {currentChat?.messages.map((message: Message, idx: number) => (
+          {currentChat?.messages?.map((message: Message, idx: number) => (
             <div key={message.id} className="msg-appear" style={{ animationDelay: `${Math.min(idx * 0.03, 0.3)}s`, display: 'flex', gap: 10, justifyContent: message.role === 'user' ? 'flex-end' : 'flex-start', alignItems: 'flex-start', maxWidth: '100%' }}>
               {message.role === 'assistant' && (
                 <div style={{ width: 34, height: 34, borderRadius: 10, flexShrink: 0, marginTop: 2, background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 14px rgba(99,102,241,0.2)' }}>

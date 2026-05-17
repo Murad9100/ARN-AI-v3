@@ -7,6 +7,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import ReactMarkdown from 'react-markdown'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
+import { sendMessage } from '../services/aiService'
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Types
@@ -98,35 +99,6 @@ function mkArc(cx: number, cy: number): Arc {
 //  Claude API Call
 // ─────────────────────────────────────────────────────────────────────────────
 
-const SYSTEM_PROMPT = `Sən ARN AI — kibertəhlükəsizlik üzrə ixtisaslaşmış neural assistantsan.
-Azərbaycan dilində cavab ver. Markdown formatından istifadə et.
-Kod nümunələri üçün həmişə kod bloklarından istifadə et.
-Birbaşa suala cavab ver — özünü təqdim etmə, capability list göstərmə.
-Penetration testing, etik hacking, şəbəkə təhlükəsizliyi, kriptoqrafiya,
-zəiflik analizi və müdafiə mövzularında dərin bilik sahibisən.`
-
-async function callClaudeAPI(messages: { role: string; content: string }[]): Promise<string> {
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 1000,
-      system: SYSTEM_PROMPT,
-      messages,
-    }),
-  })
-
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({}))
-    throw new Error((err as any)?.error?.message || `API error: ${response.status}`)
-  }
-
-  const data = await response.json()
-  return data.content?.[0]?.text || 'Cavab alına bilmədi.'
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Suggestions
@@ -541,7 +513,7 @@ export default function ChatPage() {
     ))
 
     try {
-      // Build full conversation history for the API
+      // Build full conversation history
       const currentMessages = chats
         .find(c => c.id === chatId)?.messages
         .filter(m => m.content.trim())
@@ -549,29 +521,24 @@ export default function ChatPage() {
 
       const apiMessages = [...currentMessages, { role: 'user', content: userInput }]
 
-      // Call real Claude API
-      const fullResponse = await callClaudeAPI(apiMessages)
-
-      // Stream response character by character
-      const chars = fullResponse.split('')
-      let accumulated = ''
-
-      for (let i = 0; i < chars.length; i++) {
-        accumulated += chars[i]
-        const content = accumulated
-        const cid = chatId
-        const mid = aId
-        setChats(prev => prev.map(c =>
-          c.id !== cid ? c : {
-            ...c,
-            messages: c.messages.map(m => m.id === mid ? { ...m, content } : m),
-          }
-        ))
-        const delay = chars[i] === ' ' ? 2 : chars[i] === '\n' ? 10 : 3
-        await new Promise(r => setTimeout(r, delay))
-      }
+      // Real Groq streaming via aiService.ts
+      await sendMessage(
+        apiMessages,
+        (chunk: string) => {
+          const cid = chatId
+          const mid = aId
+          setChats(prev => prev.map(c =>
+            c.id !== cid ? c : {
+              ...c,
+              messages: c.messages.map(m =>
+                m.id === mid ? { ...m, content: m.content + chunk } : m
+              ),
+            }
+          ))
+        },
+        'free' // plan: authStore-dan gələcək, hələlik 'free'
+      )
     } catch (err: any) {
-      // Show error in assistant bubble
       const errMsg = err?.message || 'Xəta baş verdi. Yenidən cəhd edin.'
       setError(errMsg)
       const mid = aId

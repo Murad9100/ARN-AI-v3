@@ -1,5 +1,9 @@
-const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY
-const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions'
+// ⚠️ DİQQƏT: API açarını koda birbaşa yazmaq təhlükəsizlik baxımından risklidir. 
+// Canlıya (production) çıxaranda yenidən .env faylına keçirməyin tövsiyə olunur.
+const API_KEY = 'AIzaSyBUrcjnaPtEK0Z7GGkN4uzred1Erd_-lfI'
+
+// Google Gemini-nin OpenAI uyğunlaşdırılmış API ünvanı
+const API_URL = 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions'
 
 const SYSTEM_PROMPTS = {
   free: `Sen ARN AI-san - kibertəhlükəsizlik sahəsində ixtisaslaşmış süni intellekt assistentisən.
@@ -46,11 +50,11 @@ Max plan istifadəçisinə ən yüksək səviyyədə cavablar ver:
 VACIB: Sualı HƏMİŞƏ birbaşa cavabla. Özünü hər dəfə təqdim etmə.`,
 }
 
-// Free: sürətli + yüksək rate limit | Pro/Max: güclü model
+// Free: sürətli model (Flash) | Pro/Max: Ən güclü model (Pro)
 const MODELS = {
-  free: 'llama-3.1-8b-instant',
-  pro: 'llama-3.3-70b-versatile',
-  max: 'llama-3.3-70b-versatile',
+  free: 'gemini-1.5-flash',
+  pro: 'gemini-1.5-pro',
+  max: 'gemini-1.5-pro',
 }
 
 const MAX_TOKENS = {
@@ -59,7 +63,7 @@ const MAX_TOKENS = {
   max: 4096,
 }
 
-// Rate limit gəldikdə Groq neçə saniyə gözləmək lazım olduğunu bildirir
+// Rate limit gəldikdə neçə saniyə gözləmək lazım olduğunu bildirir
 function parseRetryAfter(errMsg: string): number {
   const match = errMsg.match(/try again in ([\d.]+)s/i)
   return match ? Math.ceil(parseFloat(match[1])) * 1000 + 500 : 6000
@@ -71,14 +75,14 @@ export async function sendMessage(
   plan: 'free' | 'pro' | 'max' = 'free',
   _retryCount = 0
 ): Promise<void> {
-  if (!GROQ_API_KEY) {
-    throw new Error('VITE_GROQ_API_KEY tapılmadı. .env faylını yoxlayın.')
+  if (!API_KEY) {
+    throw new Error('API_KEY tapılmadı.')
   }
 
-  const response = await fetch(GROQ_API_URL, {
+  const response = await fetch(API_URL, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${GROQ_API_KEY}`,
+      'Authorization': `Bearer ${API_KEY}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
@@ -91,7 +95,7 @@ export async function sendMessage(
 
   if (!response.ok) {
     const err = await response.json().catch(() => ({}))
-    const msg = (err as any)?.error?.message || `Groq API xətası: HTTP ${response.status}`
+    const msg = (err as any)?.error?.message || `API xətası: HTTP ${response.status}`
 
     // Rate limit — avtomatik gözlə və yenidən cəhd et (max 3 dəfə)
     if (response.status === 429 && _retryCount < 3) {

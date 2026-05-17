@@ -1,4 +1,4 @@
-// Vercel və ya .env faylından pulsuz Groq açarını oxuyur
+// Açar tamamilə gizli mühitdən oxunacaq, kodda aşkar yazılmayacaq!
 const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions'
 
@@ -48,7 +48,6 @@ Max plan istifadəçisinə ən yüksək səviyyədə cavablar ver:
 VACIB: Sualı HƏMİŞƏ birbaşa cavabla. Özünü hər dəfə təqdim etmə.`,
 }
 
-// Sənin gsk_ açarın üçün rəsmi Groq modelləri
 const MODELS = {
   free: 'llama-3.1-8b-instant',
   pro: 'llama-3.3-70b-versatile',
@@ -73,7 +72,7 @@ export async function sendMessage(
   _retryCount = 0
 ): Promise<void> {
   if (!GROQ_API_KEY) {
-    throw new Error('VITE_GROQ_API_KEY tapılmadı. Zəhmət olmasa Vercel və ya .env ayarlarını yoxlayın.')
+    throw new Error('VITE_GROQ_API_KEY tapılmadı. .env və ya Vercel ayarlarını yoxlayın.')
   }
 
   try {

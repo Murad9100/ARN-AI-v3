@@ -592,7 +592,7 @@ export default function LandingPage() {
     if (!rName || !rEmail || !rPw) { triggerError('TÜM SAHƏLƏRİ DOLDURUN'); return }
     setLoading(true); setErrMsg('')
     try {
-      await registerUser(rName, rEmail, rPw)
+      await registerUser(rEmail, rPw, rName)
       triggerSuccess()
     } catch {
       triggerError('QEYDİYYAT XƏTASI — YENİDƏN CƏHD EDİN')

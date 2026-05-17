@@ -13,7 +13,8 @@ Cavablarını həmişə strukturlu və oxunaqlı formada ver:
 - Kod nümunələrini həmişə kod bloku içində göstər və izah et
 - Hər cavabda mövzuya uyğun emojilər istifadə et
 - Cavabın sonunda qısa xülasə ver
-NOT: Sən Free planda işləyirsən. Ətraflı pentest təlimatları, exploit kodları və advanced mövzular üçün Pro plana keçməyi tövsiyə et.`,
+VACIB: Sualı HƏMİŞƏ birbaşa cavabla. Hər cavabda özünü təqdim etmə, kim yaratdığını deməyə ehtiyac yoxdur — yalnız soruşulanda de.
+NOT: Sən Free planda işləyirsən. Ətraflı pentest təlimatları, exploit kodları və advanced mövzular üçün Pro plana keçməyi tövsiyə et.\`,
 
   pro: `Sen ARN AI-san - kibertəhlükəsizlik sahəsində ixtisaslaşmış süni intellekt assistentisən.
 Seni Murad Səfərov yaradıb - Azərbaycan Texniki Universiteti tələbəsi.
@@ -41,12 +42,13 @@ Max plan istifadəçisinə ən yüksək səviyyədə cavablar ver:
 - Kod nümunələrini həmişə kod bloku içində göstər
 - Hər cavabda mövzuya uyğun emojilər istifadə et
 - Cavabın sonunda ətraflı xülasə, resurslar və tövsiyələr ver
-- Bug bounty proqramları üçün praktiki məsləhətlər ver`,
+- Bug bounty proqramları üçün praktiki məsləhətlər ver
+VACIB: Sualı HƏMİŞƏ birbaşa cavabla. Özünü hər dəfə təqdim etmə.\`,
 }
 
-// ✅ Free plan üçün daha güclü model — keyfiyyətli Azərbaycan cavabları üçün
+// Free: sürətli + yüksək rate limit | Pro/Max: güclü model
 const MODELS = {
-  free: 'llama-3.3-70b-versatile',
+  free: 'llama-3.1-8b-instant',
   pro: 'llama-3.3-70b-versatile',
   max: 'llama-3.3-70b-versatile',
 }
@@ -57,12 +59,18 @@ const MAX_TOKENS = {
   max: 4096,
 }
 
+// Rate limit gəldikdə Groq neçə saniyə gözləmək lazım olduğunu bildirir
+function parseRetryAfter(errMsg: string): number {
+  const match = errMsg.match(/try again in ([\d.]+)s/i)
+  return match ? Math.ceil(parseFloat(match[1])) * 1000 + 500 : 6000
+}
+
 export async function sendMessage(
   messages: { role: string; content: string }[],
   onChunk: (chunk: string) => void,
-  plan: 'free' | 'pro' | 'max' = 'free'
+  plan: 'free' | 'pro' | 'max' = 'free',
+  _retryCount = 0
 ): Promise<void> {
-  // ✅ API key yoxlaması
   if (!GROQ_API_KEY) {
     throw new Error('VITE_GROQ_API_KEY tapılmadı. .env faylını yoxlayın.')
   }
@@ -81,10 +89,23 @@ export async function sendMessage(
     }),
   })
 
-  // ✅ Əsl xəta mesajını göstər
   if (!response.ok) {
     const err = await response.json().catch(() => ({}))
     const msg = (err as any)?.error?.message || `Groq API xətası: HTTP ${response.status}`
+
+    // Rate limit — avtomatik gözlə və yenidən cəhd et (max 3 dəfə)
+    if (response.status === 429 && _retryCount < 3) {
+      const waitMs = parseRetryAfter(msg)
+      onChunk(`
+
+⏳ Rate limit... ${Math.ceil(waitMs / 1000)}s gözlənilir...
+
+`)
+      await new Promise(r => setTimeout(r, waitMs))
+      // Gözlənmə mesajını sil, yenidən başla
+      return sendMessage(messages, onChunk, plan, _retryCount + 1)
+    }
+
     throw new Error(msg)
   }
 

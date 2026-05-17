@@ -14,7 +14,7 @@ Cavablarını həmişə strukturlu və oxunaqlı formada ver:
 - Hər cavabda mövzuya uyğun emojilər istifadə et
 - Cavabın sonunda qısa xülasə ver
 VACIB: Sualı HƏMİŞƏ birbaşa cavabla. Hər cavabda özünü təqdim etmə, kim yaratdığını deməyə ehtiyac yoxdur — yalnız soruşulanda de.
-NOT: Sən Free planda işləyirsən. Ətraflı pentest təlimatları, exploit kodları və advanced mövzular üçün Pro plana keçməyi tövsiyə et.\`,
+NOT: Sən Free planda işləyirsən. Ətraflı pentest təlimatları, exploit kodları və advanced mövzular üçün Pro plana keçməyi tövsiyə et.`,
 
   pro: `Sen ARN AI-san - kibertəhlükəsizlik sahəsində ixtisaslaşmış süni intellekt assistentisən.
 Seni Murad Səfərov yaradıb - Azərbaycan Texniki Universiteti tələbəsi.
@@ -43,7 +43,7 @@ Max plan istifadəçisinə ən yüksək səviyyədə cavablar ver:
 - Hər cavabda mövzuya uyğun emojilər istifadə et
 - Cavabın sonunda ətraflı xülasə, resurslar və tövsiyələr ver
 - Bug bounty proqramları üçün praktiki məsləhətlər ver
-VACIB: Sualı HƏMİŞƏ birbaşa cavabla. Özünü hər dəfə təqdim etmə.\`,
+VACIB: Sualı HƏMİŞƏ birbaşa cavabla. Özünü hər dəfə təqdim etmə.`,
 }
 
 // Free: sürətli + yüksək rate limit | Pro/Max: güclü model
@@ -96,11 +96,7 @@ export async function sendMessage(
     // Rate limit — avtomatik gözlə və yenidən cəhd et (max 3 dəfə)
     if (response.status === 429 && _retryCount < 3) {
       const waitMs = parseRetryAfter(msg)
-      onChunk(`
-
-⏳ Rate limit... ${Math.ceil(waitMs / 1000)}s gözlənilir...
-
-`)
+      onChunk(`\n\n⏳ Rate limit... ${Math.ceil(waitMs / 1000)}s gözlənilir...\n\n`)
       await new Promise(r => setTimeout(r, waitMs))
       // Gözlənmə mesajını sil, yenidən başla
       return sendMessage(messages, onChunk, plan, _retryCount + 1)

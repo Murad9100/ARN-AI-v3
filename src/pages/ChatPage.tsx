@@ -10,62 +10,14 @@ import ReactMarkdown from 'react-markdown'
 // ⚠️ DİQQƏT: KODU ÖZ LAYİHƏNİZƏ (VS CODE) KOPYALAYARKƏN 
 // AŞAĞIDAKİ İMPORTLARIN QARŞISINDAKI "//" İŞARƏLƏRİNİ SİLİN:
 // =========================================================================
-// import { useAuthStore } from '../store/authStore'
-// import { useChatStore } from '../store/chatStore'
-// import { sendMessage } from '../services/aiService'
-// import { supabase } from '../lib/supabase'
-// import type { Message } from '../types'
+ import { useAuthStore } from '../store/authStore'
+ import { useChatStore } from '../store/chatStore'
+ import { sendMessage } from '../services/aiService'
+ import { supabase } from '../lib/supabase'
+ import type { Message } from '../types'
 
 
-// =========================================================================
-// ⚠️ DİQQƏT: KODU ÖZ LAYİHƏNİZƏ KOPYALAYARKƏN 
-// BURADAN "MOCK BÖLMƏSİNİN SONU" YAZISINA QƏDƏR OLAN HİSSƏNİ SİLİN:
-// =========================================================================
-interface Message { id: string; role: 'user' | 'assistant'; content: string; timestamp: Date }
-interface ChatSession { id: string; title: string; messages: Message[]; createdAt: Date }
 
-const useAuthStore = () => ({ 
-  user: { id: '1', plan: 'free', tokens_used: 10, tokens_limit: 50, full_name: 'İstifadəçi' }, 
-  fetchProfile: async () => {} 
-})
-
-let mockChats: ChatSession[] = [];
-
-const useChatStore = Object.assign(
-  () => ({
-    getCurrentChat: () => mockChats[0] as ChatSession | undefined,
-    addMessage: async (_chatId: string, msg: Message) => { if(mockChats[0]) mockChats[0].messages.push(msg) },
-    addChat: async (_userId?: string) => {
-      const newChat = { id: 'chat1', title: 'Yeni Söhbət', messages: [], createdAt: new Date() };
-      mockChats = [newChat];
-      return 'chat1';
-    },
-    loadChats: (_userId?: string) => {},
-    currentChatId: mockChats.length > 0 ? 'chat1' : null as string | null,
-    setCurrentChat: (_id: string) => {},
-    chats: mockChats
-  }),
-  {
-    setState: (fn: any) => {
-      if (typeof fn === 'function') {
-         const next = fn({ chats: mockChats });
-         mockChats = next.chats || mockChats;
-      } else {
-         mockChats = fn.chats || mockChats;
-      }
-    },
-    getState: () => ({ chats: mockChats })
-  }
-)
-
-const sendMessage = async (_h: any, cb: (chunk: string) => void, _plan?: string) => {
-  const text = "Sualınız qəbul edildi! (Qeyd: Bu cavab test mühitindən gəlir. Kodu öz layihənizə kopyaladıqda əsl AI xidmətiniz cavab verəcək).";
-  for(let i=0; i<text.length; i++) {
-    cb(text[i]);
-    await new Promise(r => setTimeout(r, 20));
-  }
-};
-const supabase = { from: (_table: string) => ({ insert: async (_data: any) => {} }) }
 // =========================================================================
 // MOCK BÖLMƏSİNİN SONU
 // =========================================================================

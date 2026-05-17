@@ -16,20 +16,38 @@ import ReactMarkdown from 'react-markdown'
 // import { supabase } from '../lib/supabase'
 // import type { Message } from '../types'
 
+// ─────────────────────────────────────────────────────────────────────────────
+//  Types & Canvas Helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface Message {
+  id: string
+  role: 'user' | 'assistant'
+  content: string
+  timestamp: Date
+}
+
+interface ChatSession {
+  id: string
+  title: string
+  messages: Message[]
+  createdAt: Date
+}
+
 // --- MOCK BÖLMƏSİ (Yalnız bu pəncərədə xəta verməməsi üçün əlavə edilib) ---
-type Message = { id: string; role: 'user' | 'assistant'; content: string; timestamp: Date }
 const useAuthStore = () => ({ user: { id: '1', plan: 'free', tokens_used: 10, tokens_limit: 50, full_name: 'İstifadəçi' }, fetchProfile: async () => {} })
 
-let mockChats: any[] = [{ id: 'chat1', title: 'Yeni Söhbət', messages: [], createdAt: new Date() }];
+let mockChats: ChatSession[] = [{ id: 'chat1', title: 'Yeni Söhbət', messages: [], createdAt: new Date() }];
 
 const useChatStore = Object.assign(
   () => ({
-    getCurrentChat: () => mockChats[0],
-    addMessage: async (chatId: string, msg: any) => { mockChats[0].messages.push(msg) },
-    addChat: async () => 'chat1',
-    loadChats: () => {},
-    currentChatId: 'chat1',
-    setCurrentChat: () => {}
+    getCurrentChat: () => mockChats[0] as ChatSession | undefined,
+    addMessage: async (_chatId: string, msg: Message) => { mockChats[0].messages.push(msg) },
+    addChat: async (_userId?: string) => 'chat1',
+    loadChats: (_userId?: string) => {},
+    currentChatId: 'chat1' as string | null,
+    setCurrentChat: (_id: string) => {},
+    chats: mockChats
   }),
   {
     setState: (fn: any) => {
@@ -44,19 +62,15 @@ const useChatStore = Object.assign(
   }
 )
 
-const sendMessage = async (h: any, cb: (chunk: string) => void, plan: string) => {
+const sendMessage = async (_h: any, cb: (chunk: string) => void, _plan?: string) => {
   const text = "Sizin orijinal `import` kodlarınız bu mühitdə (Canvas) tapılmadığı üçün müvəqqəti MOCK (saxta) xidmətindən cavab alırsınız. Kodu öz layihənizə əlavə etdikdə əsl AI işləyəcək və dizayn tam yerinə oturacaq!";
   for(let i=0; i<text.length; i++) {
     cb(text[i]);
     await new Promise(r => setTimeout(r, 20));
   }
 };
-const supabase = { from: (table: string) => ({ insert: async (data: any) => {} }) }
+const supabase = { from: (_table: string) => ({ insert: async (_data: any) => {} }) }
 // ---------------------------------------------------------------------------
-
-// ─────────────────────────────────────────────────────────────────────────────
-//  Types & Canvas Helpers
-// ─────────────────────────────────────────────────────────────────────────────
 
 interface Star {
   x: number; y: number; z: number
@@ -471,22 +485,22 @@ export default function ChatPage() {
     const assistantMessageId = (Date.now() + 1).toString()
     const assistantMessage: Message = { id: assistantMessageId, role: 'assistant', content: '', timestamp: new Date() }
 
-    useChatStore.setState(state => ({
-      chats: state.chats.map(c => c.id !== chatId ? c : { ...c, messages: [...c.messages, assistantMessage] })
+    useChatStore.setState((state: { chats: ChatSession[] }) => ({
+      chats: state.chats.map((c: ChatSession) => c.id !== chatId ? c : { ...c, messages: [...c.messages, assistantMessage] })
     }))
 
     const chat = getCurrentChat()
-    const history = (chat?.messages || []).filter(m => m.id !== assistantMessageId).map(m => ({ role: m.role, content: m.content }))
+    const history = (chat?.messages || []).filter((m: Message) => m.id !== assistantMessageId).map((m: Message) => ({ role: m.role, content: m.content }))
     let finalContent = ''
 
     try {
       await sendMessage(history, chunk => {
         finalContent += chunk
-        const { chats } = useChatStore.getState()
+        const { chats } = useChatStore.getState() as { chats: ChatSession[] }
         useChatStore.setState({
-          chats: chats.map(c => c.id !== chatId ? c : {
+          chats: chats.map((c: ChatSession) => c.id !== chatId ? c : {
             ...c,
-            messages: c.messages.map(m => m.id === assistantMessageId ? { ...m, content: m.content + chunk } : m)
+            messages: c.messages.map((m: Message) => m.id === assistantMessageId ? { ...m, content: m.content + chunk } : m)
           })
         })
       }, user.plan)
@@ -499,11 +513,11 @@ export default function ChatPage() {
     } catch {
       const errorText = 'Xəta baş verdi. Yenidən cəhd edin.'
       finalContent = errorText
-      const { chats } = useChatStore.getState()
+      const { chats } = useChatStore.getState() as { chats: ChatSession[] }
       useChatStore.setState({
-        chats: chats.map(c => c.id !== chatId ? c : {
+        chats: chats.map((c: ChatSession) => c.id !== chatId ? c : {
           ...c,
-          messages: c.messages.map(m => m.id === assistantMessageId ? { ...m, content: errorText } : m)
+          messages: c.messages.map((m: Message) => m.id === assistantMessageId ? { ...m, content: errorText } : m)
         })
       })
       await supabase.from('messages').insert({
@@ -519,7 +533,7 @@ export default function ChatPage() {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() }
   }
 
-  const tokenPct = user ? Math.min((user.tokens_used / user.tokens_limit) * 100, 100) : 0
+  const tokenPct = user ? Math.min(((user.tokens_used ?? 0) / (user.tokens_limit ?? 50)) * 100, 100) : 0
 
   return (
     <div
@@ -618,7 +632,7 @@ export default function ChatPage() {
             </div>
           )}
 
-          {currentChat?.messages.map((message, idx) => (
+          {currentChat?.messages.map((message: Message, idx: number) => (
             <div key={message.id} className="msg-appear" style={{ animationDelay: `${Math.min(idx * 0.03, 0.3)}s`, display: 'flex', gap: 10, justifyContent: message.role === 'user' ? 'flex-end' : 'flex-start', alignItems: 'flex-start', maxWidth: '100%' }}>
               {message.role === 'assistant' && (
                 <div style={{ width: 34, height: 34, borderRadius: 10, flexShrink: 0, marginTop: 2, background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 14px rgba(99,102,241,0.2)' }}>

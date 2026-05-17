@@ -1,7 +1,7 @@
-// Vercel və ya lokal .env-dən Groq açarını oxuyur
-const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY
-// Rəsmi Groq API ünvanı
-const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions'
+// Vercel-dəki Environment Variable-dan açarı oxuyur
+const API_KEY = import.meta.env.VITE_GROQ_API_KEY
+// xAI (Grok) rəsmi API ünvanı
+const API_URL = 'https://api.x.ai/v1/chat/completions'
 
 const SYSTEM_PROMPTS = {
   free: `Sen ARN AI-san - kibertəhlükəsizlik sahəsində ixtisaslaşmış süni intellekt assistentisən.
@@ -48,17 +48,18 @@ Max plan istifadəçisinə ən yüksək səviyyədə cavablar ver:
 VACIB: Sualı HƏMİŞƏ birbaşa cavabla. Özünü hər dəfə təqdim etmə.`,
 }
 
-// Sənin gsk_ açarın üçün uyğun rəsmi Groq modelləri
+// xAI (Grok) rəsmi modelləri
 const MODELS = {
-  free: 'llama-3.1-8b-instant',
-  pro: 'llama-3.3-70b-versatile',
-  max: 'llama-3.3-70b-versatile',
+  free: 'grok-beta',      // Sürətli test modeli
+  pro: 'grok-2-latest',   // Ən güclü Grok-2 modeli
+  max: 'grok-2-latest',
 }
 
+// Token limitləri
 const MAX_TOKENS = {
-  free: 512,
-  pro: 2048,
-  max: 4096,
+  free: 1024,
+  pro: 4096,
+  max: 8192,
 }
 
 function parseRetryAfter(errMsg: string): number {
@@ -72,15 +73,15 @@ export async function sendMessage(
   plan: 'free' | 'pro' | 'max' = 'free',
   _retryCount = 0
 ): Promise<void> {
-  if (!GROQ_API_KEY) {
+  if (!API_KEY) {
     throw new Error('VITE_GROQ_API_KEY tapılmadı. Zəhmət olmasa Vercel və ya .env ayarlarını yoxlayın.')
   }
 
   try {
-    const response = await fetch(GROQ_API_URL, {
+    const response = await fetch(API_URL, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${GROQ_API_KEY}`,
+        'Authorization': `Bearer ${API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -98,14 +99,18 @@ export async function sendMessage(
         errorMsg = errObj?.error?.message || errorMsg
       } catch (e) {}
 
+      if (response.status === 404) {
+        throw new Error(`API bağlantı xətası (404). Grok modeli tapılmadı. Detal: ${errorMsg}`)
+      }
+
       if (response.status === 429 && _retryCount < 3) {
         const waitMs = parseRetryAfter(errorMsg)
-        onChunk(`\n\n⏳ Rate limit... ${Math.ceil(waitMs / 1000)}s gözlənilir...\n\n`)
+        onChunk(`\n\n⏳ Gözləmə limitinə çatıldı... ${Math.ceil(waitMs / 1000)}s gözlənilir...\n\n`)
         await new Promise(r => setTimeout(r, waitMs))
         return sendMessage(messages, onChunk, plan, _retryCount + 1)
       }
 
-      throw new Error(errorMsg)
+      throw new Error(`API Xətası: ${errorMsg}`)
     }
 
     const reader = response.body!.getReader()
@@ -127,7 +132,7 @@ export async function sendMessage(
           const text = json.choices?.[0]?.delta?.content || ''
           if (text) onChunk(text)
         } catch {
-          // malformed chunk — skip
+          // Xətalı parçaları atla
         }
       }
     }

@@ -4,7 +4,7 @@
  * morphing AI core, holographic authentication panels.
  *
  * Dependencies assumed in project:
- *   react, react-router-dom, (your existing authStore)
+ *  react, react-router-dom, (your existing authStore)
  *
  * No extra npm packages required — uses native Canvas 2D API.
  */
@@ -225,6 +225,7 @@ export default function LandingPage() {
   const [glitch, setGlitch] = useState(false)
   const [errMsg, setErrMsg] = useState('')
   const [loading, setLoading] = useState(false)
+  const [emailSent, setEmailSent] = useState(false)
 
   // Form fields
   const [lEmail, setLEmail] = useState('')
@@ -593,7 +594,8 @@ export default function LandingPage() {
     setLoading(true); setErrMsg('')
     try {
       await registerUser(rEmail, rPw, rName)
-      triggerSuccess()
+      setPanel(null)
+      setEmailSent(true)
     } catch {
       triggerError('QEYDİYYAT XƏTASI — YENİDƏN CƏHD EDİN')
     } finally { setLoading(false) }
@@ -1045,6 +1047,56 @@ export default function LandingPage() {
         </div>
       )}
 
+      {/* ── Email Sent message ──────────────────────────────────────────── */}
+      {emailSent && (
+        <div style={{
+          position: 'absolute', inset: 0, zIndex: 400,
+          display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center',
+          background: 'rgba(1,1,12,0.85)',
+          backdropFilter: 'blur(12px)',
+          animation: 'successReveal 0.8s 0.3s cubic-bezier(0.16,1,0.3,1) both',
+        }}>
+          <div style={{ fontSize: 52, marginBottom: 20 }}>📧</div>
+          <div style={{
+            fontSize: 8, letterSpacing: 5,
+            color: 'rgba(129,140,248,0.6)', marginBottom: 12,
+          }}>
+            // email.confirmation.sent
+          </div>
+          <div style={{
+            fontSize: 22, fontWeight: 700, letterSpacing: 4,
+            background: 'linear-gradient(135deg, #818cf8, #c084fc)',
+            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+            marginBottom: 16,
+          }}>
+            EMAIL GÖNDƏRİLDİ
+          </div>
+          <div style={{
+            fontSize: 10, letterSpacing: 2,
+            color: 'rgba(148,163,184,0.6)',
+            textAlign: 'center', lineHeight: 2, marginBottom: 28,
+          }}>
+            <span style={{ color: '#a5b4fc' }}>{rEmail}</span><br />
+            ünvanına təsdiq linki göndərildi.<br />
+            Emaili açıb linkə klikləyin, sonra giriş edin.
+          </div>
+          <button
+            onClick={() => { setEmailSent(false); setPanel('login') }}
+            style={{
+              fontFamily: "'Space Mono', monospace", fontSize: 10,
+              letterSpacing: 3, fontWeight: 700, cursor: 'pointer',
+              padding: '12px 28px', borderRadius: 8,
+              background: 'linear-gradient(135deg, rgba(99,102,241,0.28), rgba(139,92,246,0.22))',
+              border: '1px solid rgba(99,102,241,0.6)', color: 'white',
+              boxShadow: '0 0 18px rgba(99,102,241,0.22)',
+            }}
+          >
+            ⚡ GİRİŞ ET
+          </button>
+        </div>
+      )}
+
       {/* ─────────────────────────────────────────────────────────────────
           KEYFRAMES
       ───────────────────────────────────────────────────────────────── */}
@@ -1055,7 +1107,7 @@ export default function LandingPage() {
         }
         @keyframes panelReveal {
           from { opacity:0; transform: scale(0.88) translateY(24px) rotateX(8deg); }
-          to   { opacity:1; transform: scale(1)    translateY(0)     rotateX(0deg); }
+          to   { opacity:1; transform: scale(1)    translateY(0)      rotateX(0deg); }
         }
         @keyframes fadeUp {
           from { opacity:0; transform: translateY(32px); }

@@ -5,22 +5,29 @@ import { useChatStore } from '../store/chatStore'
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
+
   const { user, signOut } = useAuthStore()
   const { chats, currentChatId, addChat, setCurrentChat, deleteChat } = useChatStore()
   const navigate = useNavigate()
   const location = useLocation()
 
-  // Mobilde başlanğıcda sidebar bağlı olsun
+  // Ekran ölçüsü dəyişdikdə isMobile state-ni yenilə
   useEffect(() => {
-    const isMobile = window.innerWidth < 768
-    setSidebarOpen(!isMobile)
+    const onResize = () => setIsMobile(window.innerWidth < 768)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
   }, [])
 
-  // Mobilde route dəyişəndə sidebar bağlansın
+  // Mobildə başlanğıcda sidebar bağlı olsun
   useEffect(() => {
-    const isMobile = window.innerWidth < 768
+    setSidebarOpen(!isMobile)
+  }, []) // eslint-disable-line
+
+  // Mobildə route dəyişəndə sidebar bağlansın
+  useEffect(() => {
     if (isMobile) setSidebarOpen(false)
-  }, [location.pathname])
+  }, [location.pathname, isMobile])
 
   const handleNewChat = async () => {
     if (user) {
@@ -28,7 +35,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       navigate('/chat')
       setCurrentChat(id)
     }
-    const isMobile = window.innerWidth < 768
     if (isMobile) setSidebarOpen(false)
   }
 
@@ -40,7 +46,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const handleChatSelect = (id: string) => {
     setCurrentChat(id)
     navigate('/chat')
-    const isMobile = window.innerWidth < 768
     if (isMobile) setSidebarOpen(false)
   }
 
@@ -61,7 +66,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       style={{ background: 'var(--bg-primary)' }}
     >
       {/* ── Mobil overlay (sidebar açıqsa qaraldır) ─── */}
-      {sidebarOpen && (
+      {sidebarOpen && isMobile && (
         <div
           className="fixed inset-0 z-20 md:hidden"
           style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(2px)' }}
@@ -71,12 +76,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
       {/* ── Sidebar ─────────────────────────────────── */}
       <div
-        className="flex flex-col flex-shrink-0 transition-all duration-300 overflow-hidden
-                   fixed md:relative z-30 h-full"
+        className="flex flex-col flex-shrink-0 transition-all duration-300 overflow-hidden z-30 h-full"
         style={{
           width: sidebarOpen ? '256px' : '0px',
           background: 'var(--bg-secondary)',
           borderRight: '1px solid rgba(99,102,241,0.15)',
+          position: isMobile ? 'fixed' : 'relative',
         }}
       >
         {/* Logo */}
@@ -256,7 +261,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
           <div className="flex gap-1.5">
             <button
-              onClick={() => { navigate('/settings'); const isMobile = window.innerWidth < 768; if (isMobile) setSidebarOpen(false) }}
+              onClick={() => { navigate('/settings'); if (isMobile) setSidebarOpen(false); }}
               className="flex-1 py-1.5 text-xs rounded-xl transition-all"
               style={{
                 background: 'rgba(255,255,255,0.04)',

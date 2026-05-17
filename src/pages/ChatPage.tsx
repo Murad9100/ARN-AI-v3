@@ -310,9 +310,9 @@ export default function ChatPage() {
             </div>
 
             <p style={{
-              color: 'rgba(148,163,184,0.55)', fontSize: '0.85rem',
               maxWidth: 340, lineHeight: 1.7, marginTop: 4,
               fontFamily: "'Space Mono', monospace", fontSize: 10, letterSpacing: 1,
+              color: 'rgba(148,163,184,0.55)',
             }}>
               Penetration testing, etik hacking və kibertəhlükəsizlik haqqında suallarınızı soruşun.
             </p>

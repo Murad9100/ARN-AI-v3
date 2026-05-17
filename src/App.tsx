@@ -5,8 +5,6 @@ import { supabase } from './lib/supabase'
 import LandingPage from './pages/LandingPage'
 import Layout from './components/Layout'
 import ProtectedRoute from './components/ProtectedRoute'
-import LoginPage from './pages/LoginPage'
-import RegisterPage from './pages/RegisterPage'
 import ChatPage from './pages/ChatPage'
 import PricingPage from './pages/PricingPage'
 import SettingsPage from './pages/SettingsPage'
@@ -16,13 +14,9 @@ export default function App() {
 
   useEffect(() => {
     fetchProfile()
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session) {
-        fetchProfile()
-      }
+      if (session) fetchProfile()
     })
-
     return () => subscription.unsubscribe()
   }, [])
 
@@ -41,8 +35,8 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={user ? <Navigate to="/chat" /> : <LandingPage />} />
-        <Route path="/login" element={user ? <Navigate to="/chat" /> : <LoginPage />} />
-        <Route path="/register" element={user ? <Navigate to="/chat" /> : <RegisterPage />} />
+        <Route path="/login" element={<Navigate to="/" replace />} />
+        <Route path="/register" element={<Navigate to="/" replace />} />
         <Route path="/pricing" element={<PricingPage />} />
         <Route
           path="/chat"

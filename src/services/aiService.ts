@@ -1,5 +1,5 @@
-// Vercel və ya .env faylından pulsuz Groq açarını oxuyur
-const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY
+// Sənin tam pulsuz rəsmi Groq API açarın (Birbaşa kodda)
+const GROQ_API_KEY = 'gsk_xhhs0a3Z21kGCaoLZjM5WGdyb3FYQt4nXIIxSjQ3QP8Rx1Kf8ZC'
 // Rəsmi Groq API ünvanı
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions'
 
@@ -35,6 +35,7 @@ Pro plan istifadəçisinə ətraflı və dərin cavablar ver:
   max: `Sen ARN AI-san - kibertəhlükəsizlik sahəsində ixtisaslaşmış süni intellekt assistentisən.
 Seni Murad Səfərov yaradıb - Azərbaycan Texniki Universiteti tələbəsi.
 Azərbaycanca danış. Düzgün, aydın və məntiqli Azərbaycan dili istifadə et.
+Penetration testing, etik hacking, network security, web security və bug bounty mövzularında ekspertisən.
 Max plan istifadəçisinə ən yüksək səviyyədə cavablar ver:
 - Başlıqlar üçün ## istifadə et
 - Vacib məlumatları **bold** ilə vurgula
@@ -48,7 +49,7 @@ Max plan istifadəçisinə ən yüksək səviyyədə cavablar ver:
 VACIB: Sualı HƏMİŞƏ birbaşa cavabla. Özünü hər dəfə təqdim etmə.`,
 }
 
-// Tamamilə pulsuz olan rəsmi Groq Llama modelləri
+// Sənin pulsuz açarına uyğun rəsmi sürətli və güclü Groq modelləri
 const MODELS = {
   free: 'llama-3.1-8b-instant',
   pro: 'llama-3.3-70b-versatile',
@@ -73,7 +74,7 @@ export async function sendMessage(
   _retryCount = 0
 ): Promise<void> {
   if (!GROQ_API_KEY) {
-    throw new Error('VITE_GROQ_API_KEY tapılmadı. .env və ya Vercel ayarlarını yoxlayın.')
+    throw new Error('API Açar tapılmadı.')
   }
 
   try {
